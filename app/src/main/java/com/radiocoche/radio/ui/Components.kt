@@ -46,24 +46,25 @@ import kotlin.math.min
 
 /** Colores del diseño. */
 object C {
-    val Bg = Color(0xFF0B0E13)
-    val Panel = Color(0xFF151A22)
-    val Raised = Color(0xFF1B212B)
-    val Deep = Color(0xFF0F1319)
-    val Border = Color(0xFF232A35)
-    val Border2 = Color(0xFF2A3240)
-    val Text = Color(0xFFF2F4F7)
-    val Muted = Color(0xFFA3ADBB)
-    val Dim = Color(0xFF7A8494)
+    // Tema "Contraste alto": fondo negro y botones bien marcados para que se vea con sol.
+    val Bg = Color(0xFF000000)
+    val Panel = Color(0xFF1C2230)
+    val Raised = Color(0xFF2A3242)
+    val Deep = Color(0xFF0E1218)
+    val Border = Color(0xFF56627A)
+    val Border2 = Color(0xFF6E7B94)
+    val Text = Color(0xFFFFFFFF)
+    val Muted = Color(0xFFDCE2EA)
+    val Dim = Color(0xFFA9B3C2)
     val Accent = Color(0xFFFF8A1E)
-    val OnAccent = Color(0xFF1A1205)
-    val AccentBg = Color(0xFF2B1A0C)
-    val Tick = Color(0xFF343C4A)
-    val TickMajor = Color(0xFF6B7585)
+    val OnAccent = Color(0xFF140A00)
+    val AccentBg = Color(0xFF4A2A08)
+    val Tick = Color(0xFF6E7B94)
+    val TickMajor = Color(0xFFC3CBD6)
     val Danger = Color(0xFFFF8A7E)
-    val DangerBg = Color(0xFF1E1415)
-    val DangerBorder = Color(0xFF5C2A26)
-    val Scrim = Color(0xBF05070A)
+    val DangerBg = Color(0xFF2A1416)
+    val DangerBorder = Color(0xFF8A3A34)
+    val Scrim = Color(0xCC000000)
 }
 
 /** Letra estrecha del sistema para el nombre de la emisora y las frecuencias. */

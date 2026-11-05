@@ -136,11 +136,11 @@ class TopWayTuner private constructor(
                     mcuBand = msg.arg2
                     _status.update { it.copy(band = bandOf(mcuBand)) }
                 }
-                2 -> { // frecuencia (+ nombre PS)
+                2 -> { // frecuencia (a veces con el nombre PS)
                     val band = bandOf(mcuBand)
                     val newFreq = fromMcu(band, msg.arg2)
-                    if (newFreq != _status.value.freq) { radioText = null; pty = null }
-                    ps = text(msg.obj)
+                    if (newFreq != _status.value.freq) { ps = null; radioText = null; pty = null }
+                    text(msg.obj)?.let { ps = it }
                     _status.update { it.copy(band = band, freq = newFreq) }
                     publish()
                 }
@@ -149,9 +149,13 @@ class TopWayTuner private constructor(
                     publish()
                 }
             }
-            MSG_RDS -> { // bit 64 = AF, bit 32 = TA, bit 4 = REG
+            MSG_RDS -> { // bit 64 = AF, bit 32 = TA, bit 4 = REG; arg2 = PTY; obj = nombre PS
                 val f = msg.arg1 and 0xFFFF
                 _status.update { it.copy(af = f and 64 != 0, ta = f and 32 != 0, reg = f and 4 != 0) }
+                text(msg.obj)?.let { ps = it }
+                val code = msg.arg2 and 0xFF
+                if (code in 1..PTY_TYPES.size) pty = PTY_TYPES[code - 1]
+                publish()
             }
             MSG_RADIOTEXT -> {
                 radioText = text(msg.obj)
@@ -160,8 +164,8 @@ class TopWayTuner private constructor(
             MSG_KEYS -> when (msg.arg1) {
                 3 -> hardKeys?.invoke(HardKey.NEXT_PRESET)
                 4 -> hardKeys?.invoke(HardKey.PREV_PRESET)
-                9 -> hardKeys?.invoke(HardKey.SEEK_DOWN)
-                10 -> hardKeys?.invoke(HardKey.SEEK_UP)
+                9 -> hardKeys?.invoke(HardKey.SEEK_UP)
+                10 -> hardKeys?.invoke(HardKey.SEEK_DOWN)
             }
         }
     }
@@ -175,6 +179,9 @@ class TopWayTuner private constructor(
         w(MSG_PRESET, 255, toMcu(band, freq))
         w(MSG_SOURCE, 192, 1)
     }
+
+    /** En esta unidad la búsqueda va al revés de lo esperado: 0 = hacia arriba, 1 = hacia abajo. */
+    private fun seekArg(up: Boolean) = if (up) 0 else 1
 
     /** Espera a que la frecuencia deje de moverse tras una búsqueda. */
     private suspend fun waitSettled(timeoutMs: Long = 15000): Int {
@@ -194,7 +201,7 @@ class TopWayTuner private constructor(
     }
 
     override suspend fun seek(cfg: BandConfig, from: Int, up: Boolean): Int? {
-        w(MSG_RADIO, 1, if (up) 1 else 0)
+        w(MSG_RADIO, 1, seekArg(up))
         val f = waitSettled()
         return f.takeIf { it in cfg.min..cfg.max }
     }
@@ -205,7 +212,7 @@ class TopWayTuner private constructor(
         delay(400)
         var previous = cfg.min
         repeat(40) {
-            w(MSG_RADIO, 1, 1)
+            w(MSG_RADIO, 1, seekArg(true))
             val f = waitSettled()
             if (f <= previous || f !in cfg.min..cfg.max) return found.sorted()
             if (found.none { kotlin.math.abs(it - f) <= cfg.step / 2 }) found += f

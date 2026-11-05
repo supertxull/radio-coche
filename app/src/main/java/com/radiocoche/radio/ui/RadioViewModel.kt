@@ -51,12 +51,15 @@ data class UiState(
     val toastId: Long = 0,
     val pageRequest: Int = 0,
     val pageRequestId: Long = 0,
+    /** Presintonía elegida en último lugar; manda si sigue coincidiendo con la frecuencia. */
+    val selected: Int? = null,
 ) {
     val band: Band get() = bank.band
     val freq: Int get() = if (band == Band.FM) fm else am
     val cfg: BandConfig get() = configFor(band, settings)
     val list: List<Int?> get() = presets.getValue(bank)
-    val currentIndex: Int get() = list.indexOfFirst { cfg.same(it, freq) }
+    val currentIndex: Int
+        get() = selected?.takeIf { cfg.same(list.getOrNull(it), freq) } ?: list.indexOfFirst { cfg.same(it, freq) }
 
     fun psOf(f: Int): String? = rds[f]?.ps
     fun ptyOf(f: Int): String? = rds[f]?.pty
@@ -215,14 +218,14 @@ class RadioViewModel(app: Application) : AndroidViewModel(app) {
 
     fun selectPreset(i: Int) {
         val f = _ui.value.list.getOrNull(i)
-        if (f == null) toast("Mantén pulsado para guardar aquí") else tuneTo(f)
+        if (f == null) toast("Mantén pulsado para guardar aquí") else { _ui.update { it.copy(selected = i) }; tuneTo(f) }
     }
 
     fun savePreset(i: Int) {
         val u = _ui.value
         val l = u.list.toMutableList()
         l[i] = u.freq
-        _ui.update { it.copy(presets = it.presets + (u.bank to l)) }
+        _ui.update { it.copy(presets = it.presets + (u.bank to l), selected = i) }
         storage.savePresets(u.bank, l)
         toast("Guardada en P${i + 1}: ${u.cfg.format(u.freq)} ${u.cfg.unit}")
     }
@@ -238,6 +241,7 @@ class RadioViewModel(app: Application) : AndroidViewModel(app) {
             else -> filled.size - 1
         }
         val idx = filled[nextPos]
+        _ui.update { it.copy(selected = idx) }
         tuneTo(u.list[idx] ?: return)
         requestPage(u.visible.indexOf(idx) / 6)
     }
@@ -250,7 +254,7 @@ class RadioViewModel(app: Application) : AndroidViewModel(app) {
         val u = _ui.value
         val nb = u.bank.next()
         storage.bank = nb
-        _ui.update { it.copy(bank = nb, filter = null, info = if (nb.band == u.band) it.info else null) }
+        _ui.update { it.copy(bank = nb, filter = null, selected = null, info = if (nb.band == u.band) it.info else null) }
         val n = _ui.value
         if (nb.band != u.band) tuner.tune(n.band, n.freq)
         requestPage(n.currentIndex.coerceAtLeast(0) / 6)

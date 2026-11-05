@@ -12,8 +12,8 @@ android {
         applicationId = "com.radiocoche.radio"
         minSdk = 21
         targetSdk = 34
-        versionCode = 1
-        versionName = "0.1-simulada"
+        versionCode = 3
+        versionName = "0.3"
     }
 
     // Clave fija: así cada APK nueva se instala encima de la anterior sin desinstalar.
