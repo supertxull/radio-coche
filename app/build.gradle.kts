@@ -16,11 +16,23 @@ android {
         versionName = "0.1-simulada"
     }
 
+    // Clave fija: así cada APK nueva se instala encima de la anterior sin desinstalar.
+    signingConfigs {
+        create("radio") {
+            storeFile = file("radio.keystore")
+            storePassword = "radiocoche"
+            keyAlias = "radio"
+            keyPassword = "radiocoche"
+        }
+    }
+
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("radio")
+        }
         release {
             isMinifyEnabled = false
-            // Firmada con la clave de depuración para poder instalarla sin más pasos.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("radio")
         }
     }
     compileOptions {
