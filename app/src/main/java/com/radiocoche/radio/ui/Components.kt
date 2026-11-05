@@ -157,7 +157,7 @@ fun ToastHost(message: String?, id: Long, bottom: Dp, onTimeout: (Long) -> Unit)
             Text(
                 message,
                 color = C.Bg,
-                fontSize = 18.sp,
+                fontSize = 20.sp,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 modifier = Modifier
@@ -207,7 +207,7 @@ fun ConfirmDialog(
     Scrim(onDismiss = onCancel) {
         DialogCard(540.dp) {
             Text(title, color = C.Text, fontSize = 28.sp, fontWeight = FontWeight.SemiBold)
-            Text(message, color = C.Muted, fontSize = 19.sp, lineHeight = 26.sp)
+            Text(message, color = C.Muted, fontSize = 21.sp, lineHeight = 26.sp)
             Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 RButton(Modifier.weight(1f).height(64.dp), bg = C.Raised, onClick = onCancel) {
                     Text("Cancelar", color = C.Text, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)

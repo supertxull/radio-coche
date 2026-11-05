@@ -41,6 +41,16 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        vm.onForeground(true)
+    }
+
+    override fun onPause() {
+        vm.onForeground(false)
+        super.onPause()
+    }
+
     /** Abre la app del ecualizador de la unidad. */
     private fun openEqualizer() {
         try {
@@ -58,6 +68,6 @@ class MainActivity : ComponentActivity() {
          * Paquete de la app del ecualizador de la unidad (p. ej. "com.xxx.eq").
          * Vacío = se abre el ecualizador estándar de Android, si la unidad tiene uno.
          */
-        const val EQ_PACKAGE = ""
+        const val EQ_PACKAGE = "com.tw.eq"
     }
 }

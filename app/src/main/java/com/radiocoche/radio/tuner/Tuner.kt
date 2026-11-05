@@ -9,17 +9,28 @@ data class TunerStatus(
     val band: Band = Band.FM,
     val freq: Int = 0,
     val info: StationInfo? = null,
+    /** Estado de los ajustes que informa el propio sintonizador (null = no lo sabemos). */
+    val loc: Boolean? = null,
+    val mono: Boolean? = null,
+    val af: Boolean? = null,
+    val ta: Boolean? = null,
+    val reg: Boolean? = null,
 )
+
+/** Botones físicos o del volante que llegan desde el microcontrolador. */
+enum class HardKey { NEXT_PRESET, PREV_PRESET, SEEK_UP, SEEK_DOWN }
 
 /**
  * Todo lo que la app necesita del sintonizador.
  *
- * Ahora mismo se usa [SimulatedTuner]. Cuando sepamos cómo se controla el sintonizador
- * de la unidad Witson, se creará otra clase que implemente esta interfaz y la interfaz
- * gráfica no tendrá que cambiar.
+ * - [TopWayTuner]: el sintonizador real de la unidad (plataforma TopWay TS10).
+ * - [SimulatedTuner]: de prueba, cuando la app se ejecuta en otro aparato.
  */
 interface Tuner {
     val status: StateFlow<TunerStatus>
+
+    /** true si controla un sintonizador de verdad. */
+    val isReal: Boolean get() = false
 
     fun tune(band: Band, freq: Int)
 
@@ -34,6 +45,11 @@ interface Tuner {
     fun setAf(on: Boolean)
     fun setTa(on: Boolean)
     fun setReg(on: Boolean)
+
+    /** La app pasa a primer plano (true) o deja de estarlo (false). */
+    fun setForeground(on: Boolean) = Unit
+
+    fun setHardKeyListener(listener: ((HardKey) -> Unit)?) = Unit
 
     fun release()
 }

@@ -78,8 +78,8 @@ fun SettingsScreen(s: UiState, vm: RadioViewModel) {
                         Box(Modifier.fillMaxWidth().height(1.dp).background(C.Border))
                         Row(Modifier.fillMaxWidth().height(56.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Column(Modifier.weight(1f)) {
-                                Text("Volumen de avisos de tráfico", color = C.Text, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-                                Text("Se aplica cuando entra un aviso TA", color = C.Muted, fontSize = 14.sp)
+                                Text("Volumen de avisos de tráfico", color = C.Text, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                                Text("Se aplica cuando entra un aviso TA", color = C.Muted, fontSize = 16.sp)
                             }
                             RButton(Modifier.size(48.dp), radius = 12.dp, bg = C.Raised, onClick = { vm.changeTaVolume(-1) }) {
                                 Text("−", color = C.Text, fontSize = 26.sp)
@@ -112,7 +112,7 @@ fun SettingsScreen(s: UiState, vm: RadioViewModel) {
                                     border = C.DangerBorder,
                                     onClick = { vm.askDelete(b) },
                                 ) {
-                                    Text("Borrar ${b.label}", color = C.Danger, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                                    Text("Borrar ${b.label}", color = C.Danger, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
                                 }
                             }
                         }
@@ -139,15 +139,15 @@ fun SettingsScreen(s: UiState, vm: RadioViewModel) {
 
 @Composable
 private fun SectionTitle(text: String) {
-    Text(text, color = C.Accent, fontSize = 14.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+    Text(text, color = C.Accent, fontSize = 16.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
 }
 
 @Composable
 private fun Field(label: String, hint: String? = null, content: @Composable () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
-            Text(label, color = C.Text, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-            if (hint != null) Text(hint, color = C.Muted, fontSize = 14.sp, textAlign = TextAlign.End)
+            Text(label, color = C.Text, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+            if (hint != null) Text(hint, color = C.Muted, fontSize = 16.sp, textAlign = TextAlign.End)
         }
         content()
     }
@@ -173,7 +173,7 @@ private fun <T> Segmented(options: List<Pair<T, String>>, selected: T, onSelect:
                 Text(
                     label,
                     color = if (on) C.OnAccent else C.Muted,
-                    fontSize = 17.sp,
+                    fontSize = 19.sp,
                     fontWeight = if (on) FontWeight.Bold else FontWeight.SemiBold,
                     maxLines = 1,
                 )
@@ -186,8 +186,8 @@ private fun <T> Segmented(options: List<Pair<T, String>>, selected: T, onSelect:
 private fun SwitchRow(label: String, desc: String, checked: Boolean, onChange: (Boolean) -> Unit) {
     Row(Modifier.fillMaxWidth().height(52.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
-            Text(label, color = C.Text, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-            Text(desc, color = C.Muted, fontSize = 14.sp)
+            Text(label, color = C.Text, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+            Text(desc, color = C.Muted, fontSize = 16.sp)
         }
         val shape = RoundedCornerShape(18.dp)
         Box(

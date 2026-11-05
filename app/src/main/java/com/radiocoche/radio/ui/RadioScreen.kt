@@ -79,17 +79,17 @@ fun RadioScreen(s: UiState, vm: RadioViewModel, onEqualizer: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                RButton(Modifier.size(96.dp, 128.dp), radius = 22.dp, onClick = { vm.seek(false) }) {
+                RButton(Modifier.size(88.dp, 128.dp), radius = 22.dp, onClick = { vm.seek(false) }) {
                     GlyphIcon(Glyph.SEEK_PREV, 40.dp, C.Text)
                 }
-                RButton(Modifier.size(68.dp, 96.dp), radius = 18.dp, bg = Color.Transparent, onClick = { vm.stepFine(false) }) {
+                RButton(Modifier.size(60.dp, 96.dp), radius = 18.dp, bg = Color.Transparent, onClick = { vm.stepFine(false) }) {
                     GlyphIcon(Glyph.STEP_DOWN, 26.dp, C.Muted)
                 }
                 StationBlock(s, vm, Modifier.weight(1f))
-                RButton(Modifier.size(68.dp, 96.dp), radius = 18.dp, bg = Color.Transparent, onClick = { vm.stepFine(true) }) {
+                RButton(Modifier.size(60.dp, 96.dp), radius = 18.dp, bg = Color.Transparent, onClick = { vm.stepFine(true) }) {
                     GlyphIcon(Glyph.STEP_UP, 26.dp, C.Muted)
                 }
-                RButton(Modifier.size(96.dp, 128.dp), radius = 22.dp, onClick = { vm.seek(true) }) {
+                RButton(Modifier.size(88.dp, 128.dp), radius = 22.dp, onClick = { vm.seek(true) }) {
                     GlyphIcon(Glyph.SEEK_NEXT, 40.dp, C.Text)
                 }
             }
@@ -163,7 +163,7 @@ private fun Dial(
                 drawLine(C.Tick, Offset(x, 4.dp.toPx()), Offset(x, 14.dp.toPx()), strokeWidth = 2.dp.toPx(), cap = StrokeCap.Round)
                 f += cfg.minor
             }
-            val labelStyle = TextStyle(color = C.Muted, fontSize = 13.sp)
+            val labelStyle = TextStyle(color = C.Muted, fontSize = 15.sp)
             for (l in cfg.labels) {
                 val x = cfg.fraction(l) * w
                 drawLine(C.TickMajor, Offset(x, 4.dp.toPx()), Offset(x, 24.dp.toPx()), strokeWidth = 2.dp.toPx(), cap = StrokeCap.Round)
@@ -198,7 +198,7 @@ private fun StationBlock(s: UiState, vm: RadioViewModel, modifier: Modifier) {
             Text(
                 s.bank.label,
                 color = C.OnAccent,
-                fontSize = 14.sp,
+                fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.sp,
                 modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(C.Accent).padding(horizontal = 9.dp, vertical = 3.dp),
@@ -232,10 +232,10 @@ private fun StationBlock(s: UiState, vm: RadioViewModel, modifier: Modifier) {
         Text(
             info?.radioText.orEmpty(),
             color = C.Muted,
-            fontSize = 17.sp,
+            fontSize = 19.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.height(22.dp),
+            modifier = Modifier.height(24.dp),
         )
 
         Row(Modifier.padding(top = 2.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -256,10 +256,10 @@ private fun StatusChip(text: String, on: Boolean) {
     Text(
         text,
         color = if (on) C.Accent else C.Dim,
-        fontSize = 13.sp,
+        fontSize = 15.sp,
         fontWeight = FontWeight.Bold,
         letterSpacing = 1.sp,
-        modifier = Modifier.border(1.dp, if (on) C.Accent else C.Border2, shape).padding(horizontal = 8.dp, vertical = 2.dp),
+        modifier = Modifier.border(1.dp, if (on) C.Accent else C.Border2, shape).padding(horizontal = 6.dp, vertical = 2.dp),
     )
 }
 
@@ -278,11 +278,11 @@ private fun PtyButton(text: String, lit: Boolean, filled: Boolean, onClick: () -
             .background(if (filled) C.Accent else Color.Transparent)
             .border(1.dp, if (filled || lit) C.Accent else C.Border2, shape)
             .clickable(onClick = onClick)
-            .padding(start = 12.dp, end = 10.dp),
+            .padding(start = 10.dp, end = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Text(text, color = fg, fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, maxLines = 1)
+        Text(text, color = fg, fontSize = 15.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, maxLines = 1)
         GlyphIcon(Glyph.CHEVRON_DOWN, 14.dp, fg)
     }
 }
@@ -301,7 +301,7 @@ private fun FilterChip(filter: String, onClear: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Text("Filtro: $filter", color = C.Accent, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+        Text("Filtro: $filter", color = C.Accent, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1)
         GlyphIcon(Glyph.CLOSE, 14.dp, C.Accent)
     }
 }
@@ -312,15 +312,15 @@ private fun Toggle(label: String, on: Boolean, onClick: () -> Unit) {
     Box(
         Modifier
             .height(44.dp)
-            .widthIn(min = 60.dp)
+            .widthIn(min = 56.dp)
             .clip(shape)
             .background(if (on) C.AccentBg else Color.Transparent)
             .border(1.dp, if (on) C.Accent else C.Border2, shape)
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp),
+            .padding(horizontal = 8.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text(label, color = if (on) C.Accent else C.Dim, fontSize = 15.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+        Text(label, color = if (on) C.Accent else C.Dim, fontSize = 17.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
     }
 }
 
@@ -340,7 +340,7 @@ private fun Presets(s: UiState, vm: RadioViewModel) {
             Modifier.fillMaxWidth().height(132.dp).border(1.dp, C.Border2, RoundedCornerShape(14.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            Text("No tienes presintonías de tipo «${s.filter.orEmpty()}»", color = C.Muted, fontSize = 18.sp)
+            Text("No tienes presintonías de tipo «${s.filter.orEmpty()}»", color = C.Muted, fontSize = 20.sp)
         }
         return
     }
@@ -410,11 +410,11 @@ private fun PresetButton(s: UiState, i: Int, vm: RadioViewModel, modifier: Modif
                     vm.savePreset(i)
                 },
             )
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text("${i + 1}", color = mute, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.widthIn(min = 22.dp))
+        Text("${i + 1}", color = mute, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.widthIn(min = 22.dp))
         Text(
             label,
             color = when {
@@ -428,7 +428,7 @@ private fun PresetButton(s: UiState, i: Int, vm: RadioViewModel, modifier: Modif
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
-        if (sub.isNotEmpty()) Text(sub, color = mute, fontSize = 14.sp, maxLines = 1)
+        if (sub.isNotEmpty()) Text(sub, color = mute, fontSize = 16.sp, maxLines = 1)
     }
 }
 
@@ -468,10 +468,10 @@ private fun PtyPanel(s: UiState, vm: RadioViewModel) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text("Tipo de programa (PTY)", color = C.Text, fontSize = 26.sp, fontWeight = FontWeight.SemiBold)
-                    Text("Elige un tipo para ver solo esas presintonías. El número indica cuántas tienes.", color = C.Muted, fontSize = 15.sp)
+                    Text("Elige un tipo para ver solo esas presintonías. El número indica cuántas tienes.", color = C.Muted, fontSize = 17.sp)
                 }
                 RButton(Modifier.height(52.dp).padding(0.dp), bg = C.Raised, onClick = { vm.setFilter(null) }) {
-                    Text("Mostrar todas", color = C.Text, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 18.dp))
+                    Text("Mostrar todas", color = C.Text, fontSize = 19.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 18.dp))
                 }
                 RButton(Modifier.size(52.dp), bg = C.Raised, onClick = vm::closePty) {
                     GlyphIcon(Glyph.CLOSE, 22.dp, C.Text)
@@ -521,7 +521,7 @@ private fun PtyCell(modifier: Modifier, type: String, count: Int, on: Boolean, o
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(type, color = fg, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        Text(type, color = fg, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
         Text(
             "$count",
             color = when {
@@ -529,7 +529,7 @@ private fun PtyCell(modifier: Modifier, type: String, count: Int, on: Boolean, o
                 count > 0 -> C.Accent
                 else -> C.Dim
             },
-            fontSize = 14.sp,
+            fontSize = 16.sp,
         )
     }
 }
@@ -547,7 +547,7 @@ private fun ScanningPanel(s: UiState, vm: RadioViewModel) {
                 Text(
                     if (s.scanFound == 1) "1 emisora encontrada" else "${s.scanFound} emisoras encontradas",
                     color = C.Muted,
-                    fontSize = 17.sp,
+                    fontSize = 19.sp,
                 )
                 RButton(Modifier.fillMaxWidth().height(60.dp).padding(top = 0.dp), bg = C.Raised, onClick = vm::cancelScan) {
                     Text("Cancelar", color = C.Text, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)

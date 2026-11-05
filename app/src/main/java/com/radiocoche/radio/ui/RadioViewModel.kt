@@ -12,7 +12,9 @@ import com.radiocoche.radio.model.Region
 import com.radiocoche.radio.model.Settings
 import com.radiocoche.radio.model.StationInfo
 import com.radiocoche.radio.model.configFor
+import com.radiocoche.radio.tuner.HardKey
 import com.radiocoche.radio.tuner.SimulatedTuner
+import com.radiocoche.radio.tuner.TopWayTuner
 import com.radiocoche.radio.tuner.Tuner
 import com.radiocoche.radio.tuner.TunerStatus
 import kotlinx.coroutines.CancellationException
@@ -68,8 +70,8 @@ class RadioViewModel(app: Application) : AndroidViewModel(app) {
 
     private val storage = Storage(app)
 
-    // Aquí se cambiará SimulatedTuner por el sintonizador real de la unidad.
-    private val tuner: Tuner = SimulatedTuner()
+    // El sintonizador real de la unidad TopWay; si no está (otro aparato), el simulado.
+    private val tuner: Tuner = TopWayTuner.create() ?: SimulatedTuner()
 
     private val _ui: MutableStateFlow<UiState>
     val ui: StateFlow<UiState>
@@ -85,6 +87,13 @@ class RadioViewModel(app: Application) : AndroidViewModel(app) {
         if (rds.isEmpty() && sim != null) {
             rds = sim.knownRds()
             storage.saveRds(rds)
+        }
+        // Primera vez con el sintonizador real: fuera los datos de ejemplo de la versión simulada.
+        if (tuner.isReal && !storage.realTunerReady) {
+            rds = emptyMap()
+            storage.saveRds(rds)
+            Bank.entries.forEach { storage.savePresets(it, List(Storage.PRESETS) { null }) }
+            storage.realTunerReady = true
         }
         _ui = MutableStateFlow(
             UiState(
@@ -106,23 +115,57 @@ class RadioViewModel(app: Application) : AndroidViewModel(app) {
         tuner.setTa(s.ta)
         tuner.setAf(s.af)
         tuner.setReg(s.reg)
-        tuner.tune(s.band, s.freq)
+        // El sintonizador real ya sabe en qué emisora estaba: no se la cambiamos al arrancar.
+        if (!tuner.isReal) tuner.tune(s.band, s.freq)
+
+        tuner.setHardKeyListener { key ->
+            when (key) {
+                HardKey.NEXT_PRESET -> stepPreset(1)
+                HardKey.PREV_PRESET -> stepPreset(-1)
+                HardKey.SEEK_UP -> seek(true)
+                HardKey.SEEK_DOWN -> seek(false)
+            }
+        }
 
         viewModelScope.launch { tuner.status.collect { onStatus(it) } }
+
+        if (tuner.isReal && s.presets.values.all { l -> l.all { it == null } }) {
+            toast("Pulsa la lupa para buscar las emisoras de tu zona")
+        }
     }
+
+    /** La app vuelve a primer plano (o se va): recupera el sonido de la radio. */
+    fun onForeground(on: Boolean) = tuner.setForeground(on)
 
     private fun onStatus(status: TunerStatus) {
         val info = status.info
         val current = _ui.value
         var rds = current.rds
-        if (info != null && (info.ps != null || info.pty != null)) {
+        if (info != null && (info.ps != null || info.pty != null) && status.freq > 0) {
             val memo = RdsMemo(info.ps, info.pty)
             if (rds[status.freq] != memo) {
                 rds = rds + (status.freq to memo)
                 storage.saveRds(rds)
             }
         }
-        _ui.update { it.copy(info = if (status.band == it.band) info else null, rds = rds) }
+        // Si la emisora ha cambiado desde fuera (volante, AF, otra app), la pantalla la sigue.
+        val follow = tuner.isReal && status.freq > 0 && status.band == current.band &&
+            !current.scanning && dragJob?.isActive != true && status.freq != current.freq
+        if (follow) {
+            setFreqState(status.freq)
+            if (status.band == Band.FM) storage.fm = status.freq else storage.am = status.freq
+        }
+        _ui.update {
+            it.copy(
+                info = if (status.band == it.band) info else null,
+                rds = rds,
+                mono = status.mono ?: it.mono,
+                ta = status.ta ?: it.ta,
+                af = status.af ?: it.af,
+                reg = status.reg ?: it.reg,
+                settings = if (status.loc != null && status.loc != it.settings.loc) it.settings.copy(loc = status.loc) else it.settings,
+            )
+        }
     }
 
     // ---------- Sintonía ----------

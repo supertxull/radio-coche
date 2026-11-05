@@ -56,6 +56,10 @@ class Storage(context: Context) {
         get() = p.getInt("fm", 106300)
         set(v) = p.edit().putInt("fm", v).apply()
 
+    var realTunerReady: Boolean
+        get() = p.getBoolean("realTunerReady", false)
+        set(v) = p.edit().putBoolean("realTunerReady", v).apply()
+
     var am: Int
         get() = p.getInt("am", 846)
         set(v) = p.edit().putInt("am", v).apply()
