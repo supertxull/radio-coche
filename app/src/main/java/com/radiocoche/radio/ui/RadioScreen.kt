@@ -1,5 +1,11 @@
 package com.radiocoche.radio.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -32,6 +38,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
@@ -43,6 +53,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalViewConfiguration
@@ -57,9 +68,23 @@ import androidx.compose.ui.unit.sp
 import com.radiocoche.radio.model.Band
 import com.radiocoche.radio.model.BandConfig
 import com.radiocoche.radio.model.PTY_TYPES
+import kotlinx.coroutines.delay
 
 @Composable
 fun RadioScreen(s: UiState, vm: RadioViewModel, onEqualizer: () -> Unit) {
+    // Panel de presintonías: oculto por defecto, aparece al tocar la emisora y se esconde solo.
+    var showPresets by remember { mutableStateOf(false) }
+    var hideAfter by remember { mutableLongStateOf(2500L) }
+    var peekId by remember { mutableIntStateOf(0) }
+    val peek: (Long) -> Unit = { ms -> showPresets = true; hideAfter = ms; peekId++ }
+    LaunchedEffect(peekId) {
+        if (peekId > 0) {
+            delay(hideAfter)
+            showPresets = false
+        }
+    }
+    LaunchedEffect(s.filter) { if (s.filter != null) peek(2500L) }
+
     Box(Modifier.fillMaxSize().background(C.Bg)) {
         Column(
             Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 16.dp),
@@ -79,23 +104,53 @@ fun RadioScreen(s: UiState, vm: RadioViewModel, onEqualizer: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                RButton(Modifier.size(88.dp, 128.dp), radius = 22.dp, onClick = { vm.seek(false) }) {
-                    GlyphIcon(Glyph.SEEK_PREV, 40.dp, C.Text)
+                RButton(Modifier.size(96.dp, 150.dp), radius = 22.dp, onClick = { vm.seek(false) }) {
+                    GlyphIcon(Glyph.SEEK_PREV, 42.dp, C.Text)
                 }
-                RButton(Modifier.size(60.dp, 96.dp), radius = 18.dp, bg = Color.Transparent, onClick = { vm.stepFine(false) }) {
-                    GlyphIcon(Glyph.STEP_DOWN, 26.dp, C.Muted)
+                RButton(Modifier.size(68.dp, 110.dp), radius = 18.dp, bg = Color.Transparent, onClick = { vm.stepFine(false) }) {
+                    GlyphIcon(Glyph.STEP_DOWN, 28.dp, C.Muted)
                 }
-                StationBlock(s, vm, Modifier.weight(1f))
-                RButton(Modifier.size(60.dp, 96.dp), radius = 18.dp, bg = Color.Transparent, onClick = { vm.stepFine(true) }) {
-                    GlyphIcon(Glyph.STEP_UP, 26.dp, C.Muted)
+                StationBlock(s, vm, Modifier.weight(1f)) {
+                    if (showPresets) showPresets = false else peek(2500L)
                 }
-                RButton(Modifier.size(88.dp, 128.dp), radius = 22.dp, onClick = { vm.seek(true) }) {
-                    GlyphIcon(Glyph.SEEK_NEXT, 40.dp, C.Text)
+                RButton(Modifier.size(68.dp, 110.dp), radius = 18.dp, bg = Color.Transparent, onClick = { vm.stepFine(true) }) {
+                    GlyphIcon(Glyph.STEP_UP, 28.dp, C.Muted)
+                }
+                RButton(Modifier.size(96.dp, 150.dp), radius = 22.dp, onClick = { vm.seek(true) }) {
+                    GlyphIcon(Glyph.SEEK_NEXT, 42.dp, C.Text)
                 }
             }
 
-            Presets(s, vm)
-            BottomBar(s, vm, onEqualizer)
+            BottomBar(s, vm, onEqualizer, onPresetStep = { peek(2000L) })
+        }
+
+        Box(
+            Modifier.fillMaxSize().padding(start = 20.dp, end = 20.dp, bottom = 100.dp),
+            contentAlignment = Alignment.BottomCenter,
+        ) {
+            AnimatedVisibility(
+                visible = showPresets,
+                enter = fadeIn(tween(180)) + slideInVertically(tween(180)) { it / 6 },
+                exit = fadeOut(tween(180)) + slideOutVertically(tween(180)) { it / 6 },
+            ) {
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .panel(radius = 20.dp, bg = C.Bg, border = C.Border2)
+                        .pointerInput(Unit) {
+                            // Cualquier toque o arrastre dentro del panel lo mantiene abierto 2 s más.
+                            awaitPointerEventScope {
+                                while (true) {
+                                    awaitPointerEvent(PointerEventPass.Initial)
+                                    peek(2000L)
+                                }
+                            }
+                        }
+                        .padding(12.dp),
+                ) {
+                    Presets(s, vm)
+                }
+            }
         }
 
         ToastHost(s.toast, s.toastId, bottom = 104.dp, onTimeout = vm::clearToast)
@@ -190,22 +245,22 @@ private fun Dial(
 // ---------------- Emisora ----------------
 
 @Composable
-private fun StationBlock(s: UiState, vm: RadioViewModel, modifier: Modifier) {
+private fun StationBlock(s: UiState, vm: RadioViewModel, modifier: Modifier, onTapStation: () -> Unit) {
     val fm = s.band == Band.FM
     val info = s.info
-    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(
                 s.bank.label,
                 color = C.OnAccent,
-                fontSize = 16.sp,
+                fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.sp,
-                modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(C.Accent).padding(horizontal = 9.dp, vertical = 3.dp),
+                modifier = Modifier.clip(RoundedCornerShape(7.dp)).background(C.Accent).padding(horizontal = 11.dp, vertical = 5.dp),
             )
             if (fm) {
                 StatusChip("RDS", on = info?.ps != null)
-                val pty = info?.pty
+                val pty = info?.pty ?: s.ptyOf(s.freq)
                 PtyButton(
                     text = if (pty != null) "PTY · $pty" else "PTY",
                     lit = pty != null,
@@ -217,28 +272,38 @@ private fun StationBlock(s: UiState, vm: RadioViewModel, modifier: Modifier) {
             }
         }
 
-        val name = info?.ps
+        Column(
+            Modifier
+                .clip(RoundedCornerShape(16.dp))
+                .clickable(onClick = onTapStation)
+                .padding(horizontal = 16.dp, vertical = 2.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+        // Nombre RDS en directo; mientras llega, el que ya conocemos de esa frecuencia.
+        val name = info?.ps ?: s.psOf(s.freq)
         if (name != null) {
-            Text(name, color = C.Text, fontFamily = Condensed, fontSize = 84.sp, lineHeight = 86.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text("${s.cfg.format(s.freq)} ${s.cfg.unit}", color = C.Muted, fontSize = 24.sp)
+            Text(name, color = C.Text, fontFamily = Condensed, fontSize = 124.sp, lineHeight = 126.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text("${s.cfg.format(s.freq)} ${s.cfg.unit}", color = C.Muted, fontSize = 30.sp)
         } else {
             Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(s.cfg.format(s.freq), color = C.Text, fontFamily = Condensed, fontSize = 84.sp, lineHeight = 86.sp)
-                Text(s.cfg.unit, color = C.Muted, fontSize = 28.sp, modifier = Modifier.padding(bottom = 12.dp))
+                Text(s.cfg.format(s.freq), color = C.Text, fontFamily = Condensed, fontSize = 124.sp, lineHeight = 126.sp)
+                Text(s.cfg.unit, color = C.Muted, fontSize = 34.sp, modifier = Modifier.padding(bottom = 18.dp))
             }
-            Text("Sin datos RDS", color = C.Muted, fontSize = 24.sp)
+            Text("Sin datos RDS", color = C.Muted, fontSize = 30.sp)
         }
 
         Text(
             info?.radioText.orEmpty(),
             color = C.Muted,
-            fontSize = 19.sp,
+            fontSize = 22.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.height(24.dp),
+            modifier = Modifier.height(30.dp),
         )
+        }
 
-        Row(Modifier.padding(top = 2.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             if (fm) {
                 Toggle("TA", s.ta, vm::toggleTa)
                 Toggle("AF", s.af, vm::toggleAf)
@@ -256,10 +321,10 @@ private fun StatusChip(text: String, on: Boolean) {
     Text(
         text,
         color = if (on) C.Accent else C.Dim,
-        fontSize = 15.sp,
+        fontSize = 18.sp,
         fontWeight = FontWeight.Bold,
         letterSpacing = 1.sp,
-        modifier = Modifier.border(1.dp, if (on) C.Accent else C.Border2, shape).padding(horizontal = 6.dp, vertical = 2.dp),
+        modifier = Modifier.border(1.dp, if (on) C.Accent else C.Border2, shape).padding(horizontal = 9.dp, vertical = 4.dp),
     )
 }
 
@@ -273,7 +338,7 @@ private fun PtyButton(text: String, lit: Boolean, filled: Boolean, onClick: () -
     }
     Row(
         Modifier
-            .height(34.dp)
+            .height(40.dp)
             .clip(shape)
             .background(if (filled) C.Accent else Color.Transparent)
             .border(1.dp, if (filled || lit) C.Accent else C.Border2, shape)
@@ -282,7 +347,7 @@ private fun PtyButton(text: String, lit: Boolean, filled: Boolean, onClick: () -
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Text(text, color = fg, fontSize = 15.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, maxLines = 1)
+        Text(text, color = fg, fontSize = 18.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, maxLines = 1)
         GlyphIcon(Glyph.CHEVRON_DOWN, 14.dp, fg)
     }
 }
@@ -292,7 +357,7 @@ private fun FilterChip(filter: String, onClear: () -> Unit) {
     val shape = RoundedCornerShape(8.dp)
     Row(
         Modifier
-            .height(34.dp)
+            .height(40.dp)
             .clip(shape)
             .background(C.AccentBg)
             .border(1.dp, C.Accent, shape)
@@ -301,7 +366,7 @@ private fun FilterChip(filter: String, onClear: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Text("Filtro: $filter", color = C.Accent, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+        Text("Filtro: $filter", color = C.Accent, fontSize = 18.sp, fontWeight = FontWeight.Bold, maxLines = 1)
         GlyphIcon(Glyph.CLOSE, 14.dp, C.Accent)
     }
 }
@@ -311,8 +376,8 @@ private fun Toggle(label: String, on: Boolean, onClick: () -> Unit) {
     val shape = RoundedCornerShape(10.dp)
     Box(
         Modifier
-            .height(44.dp)
-            .widthIn(min = 56.dp)
+            .height(58.dp)
+            .widthIn(min = 96.dp)
             .clip(shape)
             .background(if (on) C.AccentBg else Color.Transparent)
             .border(1.dp, if (on) C.Accent else C.Border2, shape)
@@ -320,7 +385,7 @@ private fun Toggle(label: String, on: Boolean, onClick: () -> Unit) {
             .padding(horizontal = 8.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text(label, color = if (on) C.Accent else C.Dim, fontSize = 17.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+        Text(label, color = if (on) C.Accent else C.Dim, fontSize = 21.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
     }
 }
 
@@ -435,19 +500,19 @@ private fun PresetButton(s: UiState, i: Int, vm: RadioViewModel, modifier: Modif
 // ---------------- Barra inferior ----------------
 
 @Composable
-private fun BottomBar(s: UiState, vm: RadioViewModel, onEqualizer: () -> Unit) {
+private fun BottomBar(s: UiState, vm: RadioViewModel, onEqualizer: () -> Unit, onPresetStep: () -> Unit) {
     Row(Modifier.fillMaxWidth().height(72.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         val m = Modifier.fillMaxHeight()
         RButton(m.weight(1f), bg = C.Panel, border = C.Border, onClick = vm::askScan) {
             Icon(Icons.Filled.Search, contentDescription = "Búsqueda automática", tint = C.Text, modifier = Modifier.size(32.dp))
         }
-        RButton(m.weight(1f), bg = C.Panel, border = C.Border, onClick = { vm.stepPreset(-1) }) {
+        RButton(m.weight(1f), bg = C.Panel, border = C.Border, onClick = { vm.stepPreset(-1); onPresetStep() }) {
             GlyphIcon(Glyph.PRESET_PREV, 32.dp, C.Text)
         }
-        RButton(m.weight(1.4f), bg = C.Raised, border = C.Border2, onClick = vm::toggleBank) {
+        RButton(m.weight(1.4f), bg = C.Panel, border = C.Border, onClick = vm::toggleBank) {
             Text(s.bank.label, color = C.Text, fontFamily = Condensed, fontSize = 34.sp)
         }
-        RButton(m.weight(1f), bg = C.Panel, border = C.Border, onClick = { vm.stepPreset(1) }) {
+        RButton(m.weight(1f), bg = C.Panel, border = C.Border, onClick = { vm.stepPreset(1); onPresetStep() }) {
             GlyphIcon(Glyph.PRESET_NEXT, 32.dp, C.Text)
         }
         RButton(m.weight(1f), bg = C.Panel, border = C.Border, onClick = onEqualizer) {

@@ -92,6 +92,7 @@ class TopWayTuner private constructor(
     private var hardKeys: ((HardKey) -> Unit)? = null
 
     private val handler = Handler(Looper.getMainLooper()) { msg -> onMessage(msg); true }
+    private val askRds = Runnable { w(MSG_RDS, 255) }
 
     private fun w(what: Int, arg: Int) {
         runCatching { write2.invoke(tw, what, arg) }.onFailure { Log.w(TAG, "write($what,$arg)", it) }
@@ -139,7 +140,14 @@ class TopWayTuner private constructor(
                 2 -> { // frecuencia (a veces con el nombre PS)
                     val band = bandOf(mcuBand)
                     val newFreq = fromMcu(band, msg.arg2)
-                    if (newFreq != _status.value.freq) { ps = null; radioText = null; pty = null }
+                    if (newFreq != _status.value.freq) {
+                        ps = null; radioText = null; pty = null
+                        // El RDS tarda en llegar: lo volvemos a pedir al cabo de un momento.
+                        handler.removeCallbacks(askRds)
+                        handler.postDelayed(askRds, 1200)
+                        handler.postDelayed(askRds, 3000)
+                        handler.postDelayed(askRds, 6000)
+                    }
                     text(msg.obj)?.let { ps = it }
                     _status.update { it.copy(band = band, freq = newFreq) }
                     publish()

@@ -1,9 +1,14 @@
 package com.radiocoche.radio
 
 import android.content.ActivityNotFoundException
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.media.audiofx.AudioEffect
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -12,6 +17,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.core.content.ContextCompat
+import com.radiocoche.radio.ui.DayNight
 import com.radiocoche.radio.ui.RadioScreen
 import com.radiocoche.radio.ui.RadioViewModel
 import com.radiocoche.radio.ui.ScaledRoot
@@ -21,9 +28,22 @@ import com.radiocoche.radio.ui.SettingsScreen
 class MainActivity : ComponentActivity() {
 
     private val vm: RadioViewModel by viewModels()
+    private val mainHandler = Handler(Looper.getMainLooper())
+
+    /** Al encender o apagar las luces, la unidad avisa y cambiamos los colores. */
+    private val dayNightReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            DayNight.apply()
+            mainHandler.postDelayed({ DayNight.apply() }, 500)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        DayNight.apply()
+        ContextCompat.registerReceiver(
+            this, dayNightReceiver, IntentFilter(DayNight.ACTION), ContextCompat.RECEIVER_EXPORTED,
+        )
         setContent {
             MaterialTheme(colorScheme = darkColorScheme()) {
                 val s by vm.ui.collectAsState()
@@ -43,7 +63,14 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        DayNight.apply()
         vm.onForeground(true)
+    }
+
+    override fun onDestroy() {
+        runCatching { unregisterReceiver(dayNightReceiver) }
+        mainHandler.removeCallbacksAndMessages(null)
+        super.onDestroy()
     }
 
     override fun onPause() {

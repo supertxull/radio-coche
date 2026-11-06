@@ -23,7 +23,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -45,26 +48,60 @@ import kotlinx.coroutines.delay
 import kotlin.math.min
 
 /** Colores del diseño. */
+/** Juego de colores de la app. */
+data class Palette(
+    val bg: Color, val panel: Color, val raised: Color, val deep: Color,
+    val border: Color, val border2: Color,
+    val text: Color, val muted: Color, val dim: Color,
+    val accent: Color, val onAccent: Color, val accentBg: Color,
+    val tick: Color, val tickMajor: Color,
+    val danger: Color, val dangerBg: Color, val dangerBorder: Color,
+    val scrim: Color,
+)
+
+/** Contraste alto: de día, con las luces apagadas. */
+val ContrastPalette = Palette(
+    bg = Color(0xFF000000), panel = Color(0xFF1C2230), raised = Color(0xFF2A3242), deep = Color(0xFF0E1218),
+    border = Color(0xFF56627A), border2 = Color(0xFF6E7B94),
+    text = Color(0xFFFFFFFF), muted = Color(0xFFDCE2EA), dim = Color(0xFFA9B3C2),
+    accent = Color(0xFFFF8A1E), onAccent = Color(0xFF140A00), accentBg = Color(0xFF4A2A08),
+    tick = Color(0xFF6E7B94), tickMajor = Color(0xFFC3CBD6),
+    danger = Color(0xFFFF8A7E), dangerBg = Color(0xFF2A1416), dangerBorder = Color(0xFF8A3A34),
+    scrim = Color(0xCC000000),
+)
+
+/** Normal: de noche, con las luces encendidas. */
+val NightPalette = Palette(
+    bg = Color(0xFF0B0E13), panel = Color(0xFF151A22), raised = Color(0xFF1B212B), deep = Color(0xFF0F1319),
+    border = Color(0xFF232A35), border2 = Color(0xFF2A3240),
+    text = Color(0xFFF2F4F7), muted = Color(0xFFA3ADBB), dim = Color(0xFF7A8494),
+    accent = Color(0xFFFF8A1E), onAccent = Color(0xFF1A1205), accentBg = Color(0xFF2B1A0C),
+    tick = Color(0xFF343C4A), tickMajor = Color(0xFF6B7585),
+    danger = Color(0xFFFF8A7E), dangerBg = Color(0xFF1E1415), dangerBorder = Color(0xFF5C2A26),
+    scrim = Color(0xBF05070A),
+)
+
+/** Colores actuales. Cambian solos entre día y noche (ver MainActivity). */
 object C {
-    // Tema "Contraste alto": fondo negro y botones bien marcados para que se vea con sol.
-    val Bg = Color(0xFF000000)
-    val Panel = Color(0xFF1C2230)
-    val Raised = Color(0xFF2A3242)
-    val Deep = Color(0xFF0E1218)
-    val Border = Color(0xFF56627A)
-    val Border2 = Color(0xFF6E7B94)
-    val Text = Color(0xFFFFFFFF)
-    val Muted = Color(0xFFDCE2EA)
-    val Dim = Color(0xFFA9B3C2)
-    val Accent = Color(0xFFFF8A1E)
-    val OnAccent = Color(0xFF140A00)
-    val AccentBg = Color(0xFF4A2A08)
-    val Tick = Color(0xFF6E7B94)
-    val TickMajor = Color(0xFFC3CBD6)
-    val Danger = Color(0xFFFF8A7E)
-    val DangerBg = Color(0xFF2A1416)
-    val DangerBorder = Color(0xFF8A3A34)
-    val Scrim = Color(0xCC000000)
+    var palette by mutableStateOf(ContrastPalette)
+    val Bg: Color get() = palette.bg
+    val Panel: Color get() = palette.panel
+    val Raised: Color get() = palette.raised
+    val Deep: Color get() = palette.deep
+    val Border: Color get() = palette.border
+    val Border2: Color get() = palette.border2
+    val Text: Color get() = palette.text
+    val Muted: Color get() = palette.muted
+    val Dim: Color get() = palette.dim
+    val Accent: Color get() = palette.accent
+    val OnAccent: Color get() = palette.onAccent
+    val AccentBg: Color get() = palette.accentBg
+    val Tick: Color get() = palette.tick
+    val TickMajor: Color get() = palette.tickMajor
+    val Danger: Color get() = palette.danger
+    val DangerBg: Color get() = palette.dangerBg
+    val DangerBorder: Color get() = palette.dangerBorder
+    val Scrim: Color get() = palette.scrim
 }
 
 /** Letra estrecha del sistema para el nombre de la emisora y las frecuencias. */
