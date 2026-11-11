@@ -144,9 +144,8 @@ class TopWayTuner private constructor(
                         ps = null; radioText = null; pty = null
                         // El RDS tarda en llegar: lo volvemos a pedir al cabo de un momento.
                         handler.removeCallbacks(askRds)
-                        handler.postDelayed(askRds, 1200)
-                        handler.postDelayed(askRds, 3000)
-                        handler.postDelayed(askRds, 6000)
+                        handler.postDelayed(askRds, 2000)
+                        handler.postDelayed(askRds, 5000)
                     }
                     text(msg.obj)?.let { ps = it }
                     _status.update { it.copy(band = band, freq = newFreq) }
@@ -208,10 +207,14 @@ class TopWayTuner private constructor(
         return last
     }
 
+    /**
+     * Igual que la app de fábrica: se da la orden y el microcontrolador busca solo.
+     * No enviamos nada más mientras busca (antes se le reenviaba la frecuencia al terminar
+     * y eso podía estropear la búsqueda). La pantalla sigue la frecuencia que va informando.
+     */
     override suspend fun seek(cfg: BandConfig, from: Int, up: Boolean): Int? {
         w(MSG_RADIO, 1, seekArg(up))
-        val f = waitSettled()
-        return f.takeIf { it in cfg.min..cfg.max }
+        return null
     }
 
     override suspend fun scan(cfg: BandConfig, onProgress: (freq: Int, found: Int) -> Unit): List<Int> {

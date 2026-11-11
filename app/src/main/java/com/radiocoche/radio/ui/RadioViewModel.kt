@@ -207,7 +207,7 @@ class RadioViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun seek(up: Boolean) {
-        if (seekJob?.isActive == true) return
+        if (seekJob?.isActive == true && !tuner.isReal) return
         seekJob = viewModelScope.launch {
             val u = _ui.value
             tuner.seek(u.cfg, u.freq, up)?.let { tuneTo(it) }
