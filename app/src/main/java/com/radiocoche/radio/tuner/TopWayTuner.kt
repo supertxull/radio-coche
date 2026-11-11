@@ -191,7 +191,7 @@ class TopWayTuner private constructor(
     private fun seekArg(up: Boolean) = if (up) 0 else 1
 
     /** Espera a que la frecuencia deje de moverse tras una búsqueda. */
-    private suspend fun waitSettled(timeoutMs: Long = 15000): Int {
+    private suspend fun waitSettled(timeoutMs: Long = 20000, quietMs: Long = 900): Int {
         val start = System.currentTimeMillis()
         var last = _status.value.freq
         var lastChange = System.currentTimeMillis()
@@ -201,7 +201,7 @@ class TopWayTuner private constructor(
             val f = _status.value.freq
             if (f != last) { last = f; lastChange = System.currentTimeMillis(); moved = true }
             val quiet = System.currentTimeMillis() - lastChange
-            if (moved && quiet > 900) break
+            if (moved && quiet > quietMs) break
             if (!moved && quiet > 2500) break
         }
         return last
@@ -224,7 +224,9 @@ class TopWayTuner private constructor(
         var previous = cfg.min
         repeat(40) {
             w(MSG_RADIO, 1, seekArg(true))
-            val f = waitSettled()
+            // Solo damos por encontrada una emisora cuando la frecuencia lleva 2,5 s quieta:
+            // así las pausas que hace el microcontrolador mientras busca no se confunden con una parada.
+            val f = waitSettled(quietMs = 2500)
             if (f <= previous || f !in cfg.min..cfg.max) return found.sorted()
             if (found.none { kotlin.math.abs(it - f) <= cfg.step / 2 }) found += f
             onProgress(f, found.size)
