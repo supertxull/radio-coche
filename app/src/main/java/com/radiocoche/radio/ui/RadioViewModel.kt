@@ -114,10 +114,14 @@ class RadioViewModel(app: Application) : AndroidViewModel(app) {
         ui = _ui.asStateFlow()
 
         val s = _ui.value
-        tuner.setLoc(settings.loc)
-        tuner.setTa(s.ta)
-        tuner.setAf(s.af)
-        tuner.setReg(s.reg)
+        // Como la app de fábrica: al arrancar no tocamos LOC/DX, AF, TA ni REG del sintonizador;
+        // leemos su estado y lo mostramos. Solo se cambian cuando el usuario pulsa el botón.
+        if (!tuner.isReal) {
+            tuner.setLoc(settings.loc)
+            tuner.setTa(s.ta)
+            tuner.setAf(s.af)
+            tuner.setReg(s.reg)
+        }
         // El sintonizador real ya sabe en qué emisora estaba: no se la cambiamos al arrancar.
         if (!tuner.isReal) tuner.tune(s.band, s.freq)
 
@@ -136,6 +140,8 @@ class RadioViewModel(app: Application) : AndroidViewModel(app) {
             toast("Pulsa la lupa para buscar las emisoras de tu zona")
         }
     }
+
+    fun debugLog(): List<String> = tuner.debugLog()
 
     /** La app vuelve a primer plano (o se va): recupera el sonido de la radio. */
     fun onForeground(on: Boolean) = tuner.setForeground(on)

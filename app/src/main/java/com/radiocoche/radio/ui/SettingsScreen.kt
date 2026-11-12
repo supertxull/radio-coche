@@ -18,7 +18,16 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.clickable
 import androidx.compose.material3.Text
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.font.FontFamily
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,6 +43,7 @@ import com.radiocoche.radio.model.Region
 @Composable
 fun SettingsScreen(s: UiState, vm: RadioViewModel) {
     val st = s.settings
+    var showDiag by remember { mutableStateOf(false) }
     Box(Modifier.fillMaxSize().background(C.Bg)) {
         Column(
             Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 16.dp),
@@ -43,7 +53,10 @@ fun SettingsScreen(s: UiState, vm: RadioViewModel) {
                 RButton(Modifier.size(60.dp), onClick = vm::onBack) {
                     GlyphIcon(Glyph.BACK, 28.dp, C.Text)
                 }
-                Text("Configuración", color = C.Text, fontSize = 30.sp, fontWeight = FontWeight.SemiBold)
+                Text("Configuración", color = C.Text, fontSize = 30.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                RButton(Modifier.height(52.dp), radius = 14.dp, bg = C.Panel, onClick = { showDiag = true }) {
+                    Text("Diagnóstico", color = C.Muted, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 18.dp))
+                }
             }
 
             Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -123,6 +136,8 @@ fun SettingsScreen(s: UiState, vm: RadioViewModel) {
 
         ToastHost(s.toast, s.toastId, bottom = 32.dp, onTimeout = vm::clearToast)
 
+        if (showDiag) DiagnosticPanel(vm) { showDiag = false }
+
         val del = s.confirmDelete
         if (del != null) {
             ConfirmDialog(
@@ -201,6 +216,43 @@ private fun SwitchRow(label: String, desc: String, checked: Boolean, onChange: (
             contentAlignment = if (checked) Alignment.CenterEnd else Alignment.CenterStart,
         ) {
             Box(Modifier.size(28.dp).clip(CircleShape).background(if (checked) C.OnAccent else C.Dim))
+        }
+    }
+}
+
+/** Lista en directo de los mensajes con el sintonizador, para enviar capturas al depurar. */
+@Composable
+private fun DiagnosticPanel(vm: RadioViewModel, onClose: () -> Unit) {
+    var lines by remember { mutableStateOf(vm.debugLog()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            lines = vm.debugLog()
+            delay(500)
+        }
+    }
+    Scrim(onDismiss = onClose) {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(24.dp)
+                .panel(radius = 20.dp, bg = C.Bg, border = C.Border2)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Diagnóstico del sintonizador", color = C.Text, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                RButton(Modifier.height(48.dp), radius = 12.dp, bg = C.Raised, onClick = onClose) {
+                    Text("Cerrar", color = C.Text, fontSize = 18.sp, modifier = Modifier.padding(horizontal = 18.dp))
+                }
+            }
+            if (lines.isEmpty()) {
+                Text("Sin mensajes (sintonizador simulado o sin actividad).", color = C.Muted, fontSize = 18.sp)
+            }
+            LazyColumn(Modifier.fillMaxWidth().weight(1f)) {
+                items(lines) { line ->
+                    Text(line, color = C.Muted, fontSize = 15.sp, fontFamily = FontFamily.Monospace, maxLines = 1)
+                }
+            }
         }
     }
 }

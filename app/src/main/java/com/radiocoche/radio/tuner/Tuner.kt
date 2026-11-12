@@ -51,5 +51,8 @@ interface Tuner {
 
     fun setHardKeyListener(listener: ((HardKey) -> Unit)?) = Unit
 
+    /** Últimos mensajes intercambiados con el sintonizador (para diagnosticar). */
+    fun debugLog(): List<String> = emptyList()
+
     fun release()
 }
