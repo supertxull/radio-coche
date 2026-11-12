@@ -90,6 +90,7 @@ class TopWayTuner private constructor(
     private var pty: String? = null
     private var stereo = false
     private var hardKeys: ((HardKey) -> Unit)? = null
+    @Volatile private var scanning = false
 
     private val handler = Handler(Looper.getMainLooper()) { msg -> onMessage(msg); true }
     private val askRds = Runnable { w(MSG_RDS, 255) }
@@ -144,8 +145,10 @@ class TopWayTuner private constructor(
                         ps = null; radioText = null; pty = null
                         // El RDS tarda en llegar: lo volvemos a pedir al cabo de un momento.
                         handler.removeCallbacks(askRds)
-                        handler.postDelayed(askRds, 2000)
-                        handler.postDelayed(askRds, 5000)
+                        if (!scanning) {
+                            handler.postDelayed(askRds, 2000)
+                            handler.postDelayed(askRds, 5000)
+                        }
                     }
                     text(msg.obj)?.let { ps = it }
                     _status.update { it.copy(band = band, freq = newFreq) }
@@ -191,7 +194,12 @@ class TopWayTuner private constructor(
     private fun seekArg(up: Boolean) = if (up) 0 else 1
 
     /** Espera a que la frecuencia deje de moverse tras una búsqueda. */
-    private suspend fun waitSettled(timeoutMs: Long = 20000, quietMs: Long = 900): Int {
+    /**
+     * Espera a que una búsqueda termine: primero a que la frecuencia empiece a moverse
+     * (hasta [startTimeoutMs]; el microcontrolador puede tardar o no informar mientras barre)
+     * y después a que lleve [quietMs] quieta.
+     */
+    private suspend fun waitSettled(timeoutMs: Long = 30000, quietMs: Long = 900, startTimeoutMs: Long = 15000): Int {
         val start = System.currentTimeMillis()
         var last = _status.value.freq
         var lastChange = System.currentTimeMillis()
@@ -202,7 +210,7 @@ class TopWayTuner private constructor(
             if (f != last) { last = f; lastChange = System.currentTimeMillis(); moved = true }
             val quiet = System.currentTimeMillis() - lastChange
             if (moved && quiet > quietMs) break
-            if (!moved && quiet > 2500) break
+            if (!moved && quiet > startTimeoutMs) break
         }
         return last
     }
@@ -219,8 +227,17 @@ class TopWayTuner private constructor(
 
     override suspend fun scan(cfg: BandConfig, onProgress: (freq: Int, found: Int) -> Unit): List<Int> {
         val found = mutableListOf<Int>()
+        scanning = true
+        try {
+            return doScan(cfg, onProgress, found)
+        } finally {
+            scanning = false
+        }
+    }
+
+    private suspend fun doScan(cfg: BandConfig, onProgress: (freq: Int, found: Int) -> Unit, found: MutableList<Int>): List<Int> {
         tune(cfg.band, cfg.min)
-        delay(400)
+        delay(1500)
         var previous = cfg.min
         repeat(40) {
             w(MSG_RADIO, 1, seekArg(true))
