@@ -38,6 +38,15 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+
+    /** Mira el modo día/noche cada pocos segundos mientras la app está a la vista. */
+    private val dayNightPoll = object : Runnable {
+        override fun run() {
+            DayNight.apply()
+            mainHandler.postDelayed(this, DayNight.POLL_MS)
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         DayNight.apply()
@@ -63,7 +72,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        DayNight.apply()
+        mainHandler.removeCallbacks(dayNightPoll)
+        dayNightPoll.run()
         vm.onForeground(true)
     }
 
@@ -74,6 +84,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onPause() {
+        mainHandler.removeCallbacks(dayNightPoll)
         vm.onForeground(false)
         super.onPause()
     }

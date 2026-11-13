@@ -267,9 +267,11 @@ private fun SwitchRow(label: String, desc: String, checked: Boolean, onChange: (
 @Composable
 private fun DiagnosticPanel(vm: RadioViewModel, onClose: () -> Unit) {
     var lines by remember { mutableStateOf(vm.debugLog()) }
+    var lights by remember { mutableStateOf(DayNight.describe()) }
     LaunchedEffect(Unit) {
         while (true) {
             lines = vm.debugLog()
+            lights = DayNight.describe()
             delay(500)
         }
     }
@@ -288,6 +290,10 @@ private fun DiagnosticPanel(vm: RadioViewModel, onClose: () -> Unit) {
                     Text("Cerrar", color = C.Text, fontSize = 18.sp, modifier = Modifier.padding(horizontal = 18.dp))
                 }
             }
+            Text(
+                "Luces: " + (if (DayNight.isNight()) "NOCHE" else "DÍA") + "  ·  " + lights,
+                color = C.Accent, fontSize = 15.sp, fontFamily = FontFamily.Monospace, maxLines = 2,
+            )
             if (lines.isEmpty()) {
                 Text("Sin mensajes (sintonizador simulado o sin actividad).", color = C.Muted, fontSize = 18.sp)
             }
