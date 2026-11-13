@@ -1,5 +1,7 @@
 package com.radiocoche.radio.ui
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -32,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -44,6 +47,26 @@ import com.radiocoche.radio.model.Region
 fun SettingsScreen(s: UiState, vm: RadioViewModel) {
     val st = s.settings
     var showDiag by remember { mutableStateOf(false) }
+
+    // Exportar / importar las presintonías a un archivo de texto (emisoras.txt).
+    val context = LocalContext.current
+    var pendingImport by remember { mutableStateOf<String?>(null) }
+    val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
+        if (uri != null) {
+            val ok = runCatching {
+                context.contentResolver.openOutputStream(uri)?.use { it.write(vm.exportText().toByteArray()) }
+            }.isSuccess
+            vm.toast(if (ok) "Presintonías exportadas" else "No se ha podido guardar el archivo")
+        }
+    }
+    val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            val text = runCatching {
+                context.contentResolver.openInputStream(uri)?.use { it.readBytes().toString(Charsets.UTF_8) }
+            }.getOrNull()
+            if (text == null) vm.toast("No se ha podido leer el archivo") else pendingImport = text
+        }
+    }
     Box(Modifier.fillMaxSize().background(C.Bg)) {
         Column(
             Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 16.dp),
@@ -112,14 +135,22 @@ fun SettingsScreen(s: UiState, vm: RadioViewModel) {
                     }
 
                     Column(
-                        Modifier.fillMaxWidth().weight(1f).panel().padding(horizontal = 22.dp, vertical = 18.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        Modifier.fillMaxWidth().weight(1f).panel().padding(horizontal = 22.dp, vertical = 14.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         SectionTitle("PRESINTONÍAS")
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            RButton(Modifier.weight(1f).height(52.dp), radius = 14.dp, bg = C.Raised, onClick = { exportLauncher.launch("emisoras.txt") }) {
+                                Text("Exportar", color = C.Text, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                            }
+                            RButton(Modifier.weight(1f).height(52.dp), radius = 14.dp, bg = C.Raised, onClick = { importLauncher.launch(arrayOf("text/plain", "*/*")) }) {
+                                Text("Importar", color = C.Text, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             Bank.entries.forEach { b ->
                                 RButton(
-                                    Modifier.weight(1f).height(56.dp),
+                                    Modifier.weight(1f).height(52.dp),
                                     radius = 14.dp,
                                     bg = C.DangerBg,
                                     border = C.DangerBorder,
@@ -137,6 +168,18 @@ fun SettingsScreen(s: UiState, vm: RadioViewModel) {
         ToastHost(s.toast, s.toastId, bottom = 32.dp, onTimeout = vm::clearToast)
 
         if (showDiag) DiagnosticPanel(vm) { showDiag = false }
+
+        val imp = pendingImport
+        if (imp != null) {
+            ConfirmDialog(
+                title = "¿Importar presintonías?",
+                message = "Las presintonías de los bancos que aparezcan en el archivo se sustituirán por las del archivo.",
+                confirmText = "Importar",
+                danger = false,
+                onConfirm = { vm.importText(imp); pendingImport = null },
+                onCancel = { pendingImport = null },
+            )
+        }
 
         val del = s.confirmDelete
         if (del != null) {

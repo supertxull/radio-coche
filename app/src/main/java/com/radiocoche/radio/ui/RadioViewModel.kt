@@ -143,6 +143,68 @@ class RadioViewModel(app: Application) : AndroidViewModel(app) {
 
     fun debugLog(): List<String> = tuner.debugLog()
 
+    // ---------- Exportar / importar (emisoras.txt) ----------
+
+    /**
+     * Texto con las presintonías, fácil de leer y de editar:
+     *   [FM1]
+     *   1;COPE;106.3
+     * Una línea por presintonía ocupada: número;nombre;frecuencia (MHz en FM, kHz en AM).
+     */
+    fun exportText(): String {
+        val u = _ui.value
+        val sb = StringBuilder("# Radio Coche · presintonías\n# número;nombre;frecuencia\n")
+        Bank.entries.forEach { bank ->
+            val cfg = configFor(bank.band, u.settings)
+            sb.append("\n[").append(bank.label).append("]\n")
+            u.presets.getValue(bank).forEachIndexed { i, f ->
+                if (f != null) sb.append(i + 1).append(';').append(u.psOf(f).orEmpty()).append(';').append(cfg.format(f)).append('\n')
+            }
+        }
+        return sb.toString()
+    }
+
+    fun importText(text: String) {
+        val u = _ui.value
+        val presets = u.presets.toMutableMap()
+        var rds = u.rds
+        val touched = mutableSetOf<Bank>()
+        var bank: Bank? = null
+        var count = 0
+        text.lineSequence().map { it.trim() }.forEach { line ->
+            when {
+                line.isEmpty() || line.startsWith("#") -> Unit
+                line.startsWith("[") && line.endsWith("]") -> {
+                    bank = Bank.entries.firstOrNull { it.label.equals(line.trim('[', ']').trim(), ignoreCase = true) }
+                    bank?.let { b ->
+                        if (touched.add(b)) presets[b] = List<Int?>(Storage.PRESETS) { null }
+                    }
+                }
+                else -> {
+                    val b = bank ?: return@forEach
+                    val parts = line.split(';')
+                    val n = parts.getOrNull(0)?.trim()?.toIntOrNull() ?: return@forEach
+                    val raw = parts.getOrNull(2)?.trim()?.replace(',', '.')?.toDoubleOrNull() ?: return@forEach
+                    if (n !in 1..Storage.PRESETS) return@forEach
+                    val cfg = configFor(b.band, u.settings)
+                    val f = cfg.clamp(if (b.band == Band.FM) (raw * 1000).toInt() else raw.toInt())
+                    presets[b] = presets.getValue(b).toMutableList().also { it[n - 1] = f }
+                    val name = parts.getOrNull(1)?.trim()?.takeIf { it.isNotEmpty() }
+                    if (name != null) rds = rds + (f to RdsMemo(name, rds[f]?.pty))
+                    count++
+                }
+            }
+        }
+        if (touched.isEmpty()) {
+            toast("El archivo no tiene presintonías válidas")
+            return
+        }
+        touched.forEach { storage.savePresets(it, presets.getValue(it)) }
+        storage.saveRds(rds)
+        _ui.update { it.copy(presets = presets, rds = rds, filter = null, selected = null) }
+        toast("$count presintonías importadas")
+    }
+
     /** La app vuelve a primer plano (o se va): recupera el sonido de la radio. */
     fun onForeground(on: Boolean) = tuner.setForeground(on)
 
