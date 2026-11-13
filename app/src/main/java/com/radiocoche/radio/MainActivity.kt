@@ -18,6 +18,8 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import com.radiocoche.radio.ui.DayNight
 import com.radiocoche.radio.ui.RadioScreen
 import com.radiocoche.radio.ui.RadioViewModel
@@ -47,9 +49,29 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private var inFront = false
+
+    /** Órdenes del launcher: reenviar el estado o cambiar de presintonía. */
+    private val launcherReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            when (intent.getStringExtra("cmd")) {
+                "prev" -> vm.stepPreset(-1)
+                "next" -> vm.stepPreset(1)
+                "preset" -> intent.getIntExtra("index", -1).takeIf { it >= 0 }?.let { vm.selectPreset(it) }
+                else -> LauncherBridge.send(this@MainActivity, vm.ui.value, inFront, force = true)
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         DayNight.apply()
+        ContextCompat.registerReceiver(
+            this, launcherReceiver, IntentFilter(LauncherBridge.CMD), ContextCompat.RECEIVER_EXPORTED,
+        )
+        lifecycleScope.launch {
+            vm.ui.collect { LauncherBridge.send(this@MainActivity, it, inFront) }
+        }
         ContextCompat.registerReceiver(
             this, dayNightReceiver, IntentFilter(DayNight.ACTION), ContextCompat.RECEIVER_EXPORTED,
         )
@@ -75,16 +97,20 @@ class MainActivity : ComponentActivity() {
         mainHandler.removeCallbacks(dayNightPoll)
         dayNightPoll.run()
         vm.onForeground(true)
+        inFront = true
+        LauncherBridge.send(this, vm.ui.value, front = true, force = true)
     }
 
     override fun onDestroy() {
         runCatching { unregisterReceiver(dayNightReceiver) }
+        runCatching { unregisterReceiver(launcherReceiver) }
         mainHandler.removeCallbacksAndMessages(null)
         super.onDestroy()
     }
 
     override fun onPause() {
         mainHandler.removeCallbacks(dayNightPoll)
+        inFront = false
         vm.onForeground(false)
         super.onPause()
     }
