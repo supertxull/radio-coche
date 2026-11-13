@@ -65,6 +65,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        DayNight.load(this)
         DayNight.apply()
         ContextCompat.registerReceiver(
             this, launcherReceiver, IntentFilter(LauncherBridge.CMD), ContextCompat.RECEIVER_EXPORTED,

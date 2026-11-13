@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
@@ -77,6 +78,10 @@ fun SettingsScreen(s: UiState, vm: RadioViewModel) {
                     GlyphIcon(Glyph.BACK, 28.dp, C.Text)
                 }
                 Text("Configuración", color = C.Text, fontSize = 30.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                Text("Colores", color = C.Muted, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                Box(Modifier.width(300.dp)) {
+                    Segmented(DayNight.Mode.entries.map { it to it.label }, DayNight.mode) { DayNight.setMode(context, it) }
+                }
                 RButton(Modifier.height(52.dp), radius = 14.dp, bg = C.Panel, onClick = { showDiag = true }) {
                     Text("Diagnóstico", color = C.Muted, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 18.dp))
                 }
@@ -291,7 +296,7 @@ private fun DiagnosticPanel(vm: RadioViewModel, onClose: () -> Unit) {
                 }
             }
             Text(
-                "Luces: " + (if (DayNight.isNight()) "NOCHE" else "DÍA") + "  ·  " + lights,
+                "Colores: " + (if (DayNight.isNight()) "NOCHE" else "DÍA") + "  ·  " + lights,
                 color = C.Accent, fontSize = 15.sp, fontFamily = FontFamily.Monospace, maxLines = 2,
             )
             if (lines.isEmpty()) {

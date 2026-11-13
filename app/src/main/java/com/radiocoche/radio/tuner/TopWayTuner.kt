@@ -46,6 +46,8 @@ class TopWayTuner private constructor(
         private val LISTEN = intArrayOf(
             0x109, 0x10A, 0x112, 0x201, 0x203, 0x301,
             MSG_RADIO, MSG_PRESET, MSG_RDS, MSG_RADIOTEXT, 0x406, MSG_ACTIVITY, MSG_KEYS,
+            // Solo para el diagnóstico (buscando la señal de las luces): los escuchan EQ y Música de fábrica.
+            0x101, 0x10B, 0x510, 0xA100,
         )
 
         /** Devuelve el sintonizador real, o null si la app no está en una unidad TopWay. */
