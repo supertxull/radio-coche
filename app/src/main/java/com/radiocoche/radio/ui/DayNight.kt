@@ -47,11 +47,11 @@ object DayNight {
         apply()
     }
 
-    fun isNight(): Boolean = when (mode) {
-        Mode.DAY -> false
-        Mode.NIGHT -> true
-        Mode.AUTO -> sunIsDown()
-    }
+    /**
+     * Decisión del usuario (2026-11-13): como no hay señal de las luces, siempre contraste alto.
+     * Si algún día aparece la señal, basta con devolver aquí si las luces están encendidas.
+     */
+    fun isNight(): Boolean = false
 
     fun apply() {
         val next = if (isNight()) NightPalette else ContrastPalette

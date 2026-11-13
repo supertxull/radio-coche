@@ -78,10 +78,6 @@ fun SettingsScreen(s: UiState, vm: RadioViewModel) {
                     GlyphIcon(Glyph.BACK, 28.dp, C.Text)
                 }
                 Text("Configuración", color = C.Text, fontSize = 30.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                Text("Colores", color = C.Muted, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-                Box(Modifier.width(300.dp)) {
-                    Segmented(DayNight.Mode.entries.map { it to it.label }, DayNight.mode) { DayNight.setMode(context, it) }
-                }
                 RButton(Modifier.height(52.dp), radius = 14.dp, bg = C.Panel, onClick = { showDiag = true }) {
                     Text("Diagnóstico", color = C.Muted, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 18.dp))
                 }
