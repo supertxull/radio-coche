@@ -28,6 +28,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.text.font.FontFamily
 import kotlinx.coroutines.delay
@@ -267,6 +269,11 @@ private fun SwitchRow(label: String, desc: String, checked: Boolean, onChange: (
 /** Lista en directo de los mensajes con el sintonizador, para enviar capturas al depurar. */
 @Composable
 private fun DiagnosticPanel(vm: RadioViewModel, onClose: () -> Unit) {
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var snapA by remember { mutableStateOf<Map<String, String>?>(null) }
+    var diffs by remember { mutableStateOf<List<String>?>(null) }
+    var busy by remember { mutableStateOf(false) }
     var lines by remember { mutableStateOf(vm.debugLog()) }
     var lights by remember { mutableStateOf(DayNight.describe()) }
     LaunchedEffect(Unit) {
@@ -295,10 +302,47 @@ private fun DiagnosticPanel(vm: RadioViewModel, onClose: () -> Unit) {
                 "Colores: " + (if (DayNight.isNight()) "NOCHE" else "DÍA") + "  ·  " + lights,
                 color = C.Accent, fontSize = 15.sp, fontFamily = FontFamily.Monospace, maxLines = 2,
             )
-            if (lines.isEmpty()) {
+            // Búsqueda de la señal de las luces: foto con luces apagadas, foto con luces encendidas.
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                RButton(Modifier.height(48.dp), radius = 12.dp, bg = C.Raised, onClick = {
+                    if (!busy) scope.launch {
+                        busy = true
+                        snapA = SystemSnapshot.take(ctx)
+                        diffs = null
+                        busy = false
+                    }
+                }) {
+                    Text("1 · Luces apagadas: foto", color = C.Text, fontSize = 17.sp, modifier = Modifier.padding(horizontal = 14.dp))
+                }
+                RButton(Modifier.height(48.dp), radius = 12.dp, bg = if (snapA != null) C.Raised else C.Panel, onClick = {
+                    val a = snapA
+                    if (a != null && !busy) scope.launch {
+                        busy = true
+                        diffs = SystemSnapshot.diff(a, SystemSnapshot.take(ctx))
+                        busy = false
+                    }
+                }) {
+                    Text("2 · Luces encendidas: comparar", color = if (snapA != null) C.Text else C.Dim, fontSize = 17.sp, modifier = Modifier.padding(horizontal = 14.dp))
+                }
+                Text(
+                    when {
+                        busy -> "Leyendo…"
+                        diffs != null -> "${diffs!!.size} cambios"
+                        snapA != null -> "Foto guardada (${snapA!!.size} valores)"
+                        else -> ""
+                    },
+                    color = C.Muted, fontSize = 16.sp,
+                )
+            }
+            if (lines.isEmpty() && diffs == null) {
                 Text("Sin mensajes (sintonizador simulado o sin actividad).", color = C.Muted, fontSize = 18.sp)
             }
             LazyColumn(Modifier.fillMaxWidth().weight(1f)) {
+                diffs?.let { d ->
+                    items(if (d.isEmpty()) listOf("Sin cambios entre las dos fotos") else d) { line ->
+                        Text(line, color = C.Accent, fontSize = 15.sp, fontFamily = FontFamily.Monospace)
+                    }
+                }
                 items(lines) { line ->
                     Text(line, color = C.Muted, fontSize = 15.sp, fontFamily = FontFamily.Monospace, maxLines = 1)
                 }
