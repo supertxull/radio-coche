@@ -11,8 +11,8 @@ android {
         applicationId = "com.radiocoche.diagnostico"
         minSdk = 21
         targetSdk = 34
-        versionCode = 3
-        versionName = "1.2"
+        versionCode = 4
+        versionName = "1.3"
     }
 
     // Misma clave fija que la radio.

@@ -79,41 +79,56 @@ class ListenActivity : Activity() {
             LinearLayout.LayoutParams(MATCH_PARENT, 0, 1f))
         setContentView(root)
 
-        startListening()
-        listenBroadcasts()
+        status.text = "Preparando…"
+        try { listenBroadcasts() } catch (e: Throwable) { add("Broadcasts: ${e.message}") }
         add("Modo noche de Android: ${nightText(resources.configuration)}")
-        status.text = "Escuchando ${instances.size} grupos. Pulsa MARCA, enciende las luces, espera 5 s, pulsa MARCA, apágalas, espera 5 s y pulsa MARCA. Repite 2 veces y pulsa Guardar."
+        // Se abre la escucha después de mostrar la pantalla, en segundo plano y grupo a grupo.
+        main.postDelayed({
+            // Hilo con Looper por si TWUtil crea Handlers por dentro.
+            val ht = android.os.HandlerThread("escucha").apply { start() }
+            Handler(ht.looper).post { startListening() }
+        }, 500)
     }
 
     // ---------- MCU ----------
 
+    // Primero los grupos más probables; cada uno con 256 códigos.
     private fun ranges(): List<IntRange> = listOf(
-        0x0000..0x00FF, 0x0100..0x01FF, 0x0200..0x02FF, 0x0300..0x03FF,
-        0x0400..0x04FF, 0x0500..0x05FF, 0x0600..0x06FF, 0x0700..0x07FF,
-        0x0800..0x0FFF, 0x9E00..0x9EFF, 0xA000..0xA1FF,
+        0x0100..0x01FF, 0x0200..0x02FF, 0x0300..0x03FF, 0x9E00..0x9EFF,
+        0xA100..0xA1FF, 0x0000..0x00FF, 0x0500..0x05FF, 0x0600..0x06FF,
+        0x0700..0x07FF, 0x0400..0x04FF, 0xA000..0xA0FF,
     )
+
+    private fun ui(f: () -> Unit) = main.post { try { f() } catch (_: Throwable) {} }
 
     private fun startListening() {
         val cls = try { Class.forName("android.tw.john.TWUtil") } catch (e: Throwable) {
-            add("No hay TWUtil en este equipo: ${e.message}"); return
+            ui { add("No hay TWUtil en este equipo: ${e.message}"); status.text = "Este equipo no tiene TWUtil" }; return
         }
         for (r in ranges()) {
+            ui { status.text = "Abriendo ${hex(r.first)}… (${instances.size} abiertos)" }
             try {
                 val tw = try { cls.getConstructor(Int::class.javaPrimitiveType).newInstance(1) }
                          catch (e: Throwable) { cls.getConstructor().newInstance() }
                 val ids = ShortArray(r.count()) { (r.first + it).toShort() }
                 val res = cls.getMethod("open", ShortArray::class.java).invoke(tw, ids) as? Int ?: 0
-                if (res != 0) { add("open ${hex(r.first)}-${hex(r.last)} → $res"); continue }
+                if (res != 0) { ui { add("open ${hex(r.first)}-${hex(r.last)} → $res") }; continue }
                 cls.getMethod("start").invoke(tw)
                 val h = Handler(Looper.getMainLooper()) { m ->
-                    onMcu(m.what, m.arg1, m.arg2, m.obj); true
+                    try { onMcu(m.what, m.arg1, m.arg2, m.obj) } catch (_: Throwable) {}
+                    true
                 }
                 cls.getMethod("addHandler", String::class.java, Handler::class.java)
                     .invoke(tw, "EscuchaLuces${r.first}", h)
-                instances += tw to cls
+                synchronized(instances) { instances += tw to cls }
+                ui { add("Escuchando ${hex(r.first)}-${hex(r.last)}") }
             } catch (e: Throwable) {
-                add("Error ${hex(r.first)}: ${e.javaClass.simpleName} ${e.message}")
+                ui { add("Error ${hex(r.first)}: ${e.javaClass.simpleName} ${e.message}") }
             }
+        }
+        ui {
+            status.text = "Escuchando ${instances.size} grupos. Pulsa MARCA, enciende las luces, espera 5 s, " +
+                "pulsa MARCA, apágalas, espera 5 s y pulsa MARCA. Repite y pulsa Guardar."
         }
     }
 
