@@ -26,5 +26,14 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Órdenes del launcher; funciona también con la Radio cerrada. -->
+        <receiver
+            android:name=".LauncherCommandReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.radiocoche.radio.CMD" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

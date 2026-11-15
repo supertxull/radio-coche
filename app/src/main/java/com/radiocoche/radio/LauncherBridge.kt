@@ -10,11 +10,19 @@ import com.radiocoche.radio.ui.UiState
  * La Radio le envía su estado con el aviso [STATE] cada vez que cambia, y obedece las
  * órdenes que llegan con [CMD]: "query" (reenviar el estado), "prev" / "next"
  * (presintonía anterior / siguiente) y "preset" + "index" (elegir una presintonía).
+ *
+ * Las órdenes llegan a [LauncherCommandReceiver]. Si la pantalla de la Radio está abierta
+ * (aunque sea en segundo plano), las atiende ella a través de [handler]; si está cerrada,
+ * el receptor sintoniza directamente, porque la radio sigue sonando sin la app.
  */
 object LauncherBridge {
     const val STATE = "com.radiocoche.radio.STATE"
     const val CMD = "com.radiocoche.radio.CMD"
     private const val LAUNCHER = "com.radiocoche.launcher"
+
+    /** Lo pone la pantalla de la Radio mientras existe: recibe la orden y el índice. */
+    @Volatile
+    var handler: ((cmd: String, index: Int) -> Unit)? = null
 
     /** Lo que ve el launcher; si no cambia, no se vuelve a enviar. */
     private var last: List<Any?>? = null
@@ -23,9 +31,10 @@ object LauncherBridge {
         val cfg = u.cfg
         val name = u.info?.ps?.takeIf { it.isNotBlank() } ?: u.psOf(u.freq) ?: ""
         val text = u.info?.radioText ?: ""
+        val pty = u.info?.pty?.takeIf { it.isNotBlank() } ?: u.ptyOf(u.freq) ?: ""
         val pFreq = u.list.map { f -> f?.let { cfg.format(it) } ?: "" }
         val pName = u.list.map { f -> f?.let { u.psOf(it) } ?: "" }
-        val key = listOf(u.bank, u.freq, name, text, u.currentIndex, pFreq, pName, front)
+        val key = listOf(u.bank, u.freq, name, text, pty, u.currentIndex, pFreq, pName, front)
         if (!force && key == last) return
         last = key
 
@@ -35,6 +44,7 @@ object LauncherBridge {
             .putExtra("unit", cfg.unit)
             .putExtra("name", name)
             .putExtra("text", text)
+            .putExtra("pty", pty)
             .putExtra("pos", cfg.fraction(u.freq))
             .putExtra("labels", cfg.labels.map { cfg.format(it) }.toTypedArray())
             .putExtra("preset", u.currentIndex)

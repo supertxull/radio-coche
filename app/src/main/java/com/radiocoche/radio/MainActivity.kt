@@ -51,15 +51,13 @@ class MainActivity : ComponentActivity() {
 
     private var inFront = false
 
-    /** Órdenes del launcher: reenviar el estado o cambiar de presintonía. */
-    private val launcherReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            when (intent.getStringExtra("cmd")) {
-                "prev" -> vm.stepPreset(-1)
-                "next" -> vm.stepPreset(1)
-                "preset" -> intent.getIntExtra("index", -1).takeIf { it >= 0 }?.let { vm.selectPreset(it) }
-                else -> LauncherBridge.send(this@MainActivity, vm.ui.value, inFront, force = true)
-            }
+    /** Órdenes del launcher (llegan a LauncherCommandReceiver): reenviar el estado o cambiar de presintonía. */
+    private fun onLauncherCommand(cmd: String, index: Int) {
+        when (cmd) {
+            "prev" -> vm.stepPreset(-1)
+            "next" -> vm.stepPreset(1)
+            "preset" -> index.takeIf { it >= 0 }?.let { vm.selectPreset(it) }
+            else -> LauncherBridge.send(this, vm.ui.value, inFront, force = true)
         }
     }
 
@@ -67,9 +65,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         DayNight.load(this)
         DayNight.apply()
-        ContextCompat.registerReceiver(
-            this, launcherReceiver, IntentFilter(LauncherBridge.CMD), ContextCompat.RECEIVER_EXPORTED,
-        )
+        LauncherBridge.handler = { cmd, index -> runOnUiThread { onLauncherCommand(cmd, index) } }
         lifecycleScope.launch {
             vm.ui.collect { LauncherBridge.send(this@MainActivity, it, inFront) }
         }
@@ -104,7 +100,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         runCatching { unregisterReceiver(dayNightReceiver) }
-        runCatching { unregisterReceiver(launcherReceiver) }
+        LauncherBridge.handler = null
         mainHandler.removeCallbacksAndMessages(null)
         super.onDestroy()
     }
