@@ -52,6 +52,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
@@ -226,17 +227,19 @@ private fun Dial(
                 drawText(layout, topLeft = Offset(x - layout.size.width / 2f, 26.dp.toPx()))
             }
             val nx = cfg.fraction(freq) * w
+            // Marca roja con reborde negro, igual que la aguja del velocímetro del launcher.
             drawRoundRect(
-                C.Accent.copy(alpha = 0.25f),
-                topLeft = Offset(nx - 6.dp.toPx(), 0f),
-                size = Size(12.dp.toPx(), 34.dp.toPx()),
-                cornerRadius = CornerRadius(6.dp.toPx()),
-            )
-            drawRoundRect(
-                C.Accent,
+                NeedleRed,
                 topLeft = Offset(nx - 3.dp.toPx(), 2.dp.toPx()),
                 size = Size(6.dp.toPx(), 30.dp.toPx()),
                 cornerRadius = CornerRadius(3.dp.toPx()),
+            )
+            drawRoundRect(
+                Color.Black,
+                topLeft = Offset(nx - 3.dp.toPx(), 2.dp.toPx()),
+                size = Size(6.dp.toPx(), 30.dp.toPx()),
+                cornerRadius = CornerRadius(3.dp.toPx()),
+                style = Stroke(1.5.dp.toPx()),
             )
         }
     }

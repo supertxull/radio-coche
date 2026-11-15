@@ -59,12 +59,15 @@ data class Palette(
     val scrim: Color,
 )
 
+/** Rojo de la marca del dial (el mismo que la aguja del launcher). */
+val NeedleRed = Color(0xFFFF0000)
+
 /** Contraste alto: de día, con las luces apagadas. */
 val ContrastPalette = Palette(
     bg = Color(0xFF000000), panel = Color(0xFF1C2230), raised = Color(0xFF2A3242), deep = Color(0xFF0E1218),
     border = Color(0xFF56627A), border2 = Color(0xFF6E7B94),
     text = Color(0xFFFFFFFF), muted = Color(0xFFDCE2EA), dim = Color(0xFFA9B3C2),
-    accent = Color(0xFFFF8A1E), onAccent = Color(0xFF140A00), accentBg = Color(0xFF4A2A08),
+    accent = Color(0xFFFF6A1A), onAccent = Color(0xFF140A00), accentBg = Color(0xFF4A2008),
     tick = Color(0xFF6E7B94), tickMajor = Color(0xFFC3CBD6),
     danger = Color(0xFFFF8A7E), dangerBg = Color(0xFF2A1416), dangerBorder = Color(0xFF8A3A34),
     scrim = Color(0xCC000000),
@@ -75,7 +78,7 @@ val NightPalette = Palette(
     bg = Color(0xFF0B0E13), panel = Color(0xFF151A22), raised = Color(0xFF1B212B), deep = Color(0xFF0F1319),
     border = Color(0xFF232A35), border2 = Color(0xFF2A3240),
     text = Color(0xFFF2F4F7), muted = Color(0xFFA3ADBB), dim = Color(0xFF7A8494),
-    accent = Color(0xFFFF8A1E), onAccent = Color(0xFF1A1205), accentBg = Color(0xFF2B1A0C),
+    accent = Color(0xFFFF6A1A), onAccent = Color(0xFF1A1205), accentBg = Color(0xFF2B140A),
     tick = Color(0xFF343C4A), tickMajor = Color(0xFF6B7585),
     danger = Color(0xFFFF8A7E), dangerBg = Color(0xFF1E1415), dangerBorder = Color(0xFF5C2A26),
     scrim = Color(0xBF05070A),
