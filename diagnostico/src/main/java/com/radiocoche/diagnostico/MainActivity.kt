@@ -62,6 +62,7 @@ class MainActivity : Activity() {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
         }
+        row.addView(button("Escuchar luces") { startActivity(Intent(this, ListenActivity::class.java)) }.also { buttons.remove(it) })
         row.addView(button("Guardar en…") { saveAs() })
         row.addView(button("Compartir") { share() })
         row.addView(button("Copiar") { copy() })
