@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.radiocoche.radio.tuner.CarLights
 import java.util.Calendar
 import java.util.Locale
 import java.util.TimeZone
@@ -39,6 +40,9 @@ object DayNight {
     fun load(context: Context) {
         val name = context.getSharedPreferences("radio", Context.MODE_PRIVATE).getString("colorMode", Mode.AUTO.name)
         mode = Mode.entries.firstOrNull { it.name == name } ?: Mode.AUTO
+        prefs = context.getSharedPreferences("radio", Context.MODE_PRIVATE)
+        lastKnown = prefs?.takeIf { it.contains("lightsOn") }?.getBoolean("lightsOn", false)
+        CarLights.setListener { onLights(it) }
     }
 
     fun setMode(context: Context, m: Mode) {
@@ -48,10 +52,21 @@ object DayNight {
     }
 
     /**
-     * Decisión del usuario (2026-11-13): como no hay señal de las luces, siempre contraste alto.
-     * Si algún día aparece la señal, basta con devolver aquí si las luces están encendidas.
+     * Decisión del usuario: con las luces apagadas, contraste alto; con las luces encendidas,
+     * los colores oscuros normales. Las luces llegan del microcontrolador (mensaje 0x204).
+     * Mientras no se sepa, se usa el último estado conocido; y si no hay ninguno, contraste.
      */
-    fun isNight(): Boolean = false
+    private var lastKnown: Boolean? = null
+    private var prefs: android.content.SharedPreferences? = null
+
+    fun isNight(): Boolean = CarLights.on ?: lastKnown ?: false
+
+    /** Se llama al recibir el estado de las luces. */
+    fun onLights(on: Boolean) {
+        lastKnown = on
+        prefs?.edit()?.putBoolean("lightsOn", on)?.apply()
+        apply()
+    }
 
     fun apply() {
         val next = if (isNight()) NightPalette else ContrastPalette
@@ -60,8 +75,8 @@ object DayNight {
 
     /** Texto para la pantalla de diagnóstico. */
     fun describe(): String {
-        val (rise, set) = sunTimesUtcMinutes()
-        return "modo ${mode.label} · amanece ${local(rise)} · anochece ${local(set)}"
+        val l = when (CarLights.on) { true -> "encendidas"; false -> "apagadas"; null -> "sin dato (último: $lastKnown)" }
+        return "luces $l · ${if (isNight()) "colores normales" else "contraste alto"}"
     }
 
     private fun sunIsDown(): Boolean {

@@ -43,9 +43,10 @@ class TopWayTuner private constructor(
         private const val MSG_KEYS = 0x9E01     // teclas del volante / frontal
         private const val MSG_SOURCE = 0x9E11   // fuente de audio
         private val BAND_TOKEN = Any()
+        private const val MSG_LIGHTS = 0x204    // luces del coche: arg1 = 1 encendidas, 0 apagadas
 
         private val LISTEN = intArrayOf(
-            0x109, 0x10A, 0x112, 0x201, 0x203, 0x301,
+            0x109, 0x10A, 0x112, 0x201, 0x203, MSG_LIGHTS, 0x301,
             MSG_RADIO, MSG_PRESET, MSG_RDS, MSG_RADIOTEXT, 0x406, MSG_ACTIVITY, MSG_KEYS,
         )
 
@@ -122,6 +123,7 @@ class TopWayTuner private constructor(
     private fun requestState() {
         w(0x109, 255); w(0x10A, 255); w(0x301, 255); w(0x112, 255)
         w(0x406, 0); w(MSG_RADIO, 255); w(MSG_RDS, 255); w(0x203, 255)
+        w(MSG_LIGHTS, 255) // estado de las luces (si el microcontrolador responde a la consulta)
     }
 
     private fun toMcu(band: Band, freqKhz: Int) = if (band == Band.FM) freqKhz / 10 else freqKhz
@@ -185,6 +187,7 @@ class TopWayTuner private constructor(
                 if (code in 1..PTY_TYPES.size) pty = PTY_TYPES[code - 1]
                 publish()
             }
+            MSG_LIGHTS -> CarLights.set(msg.arg1 != 0)
             MSG_RADIOTEXT -> {
                 radioText = text(msg.obj)
                 publish()
