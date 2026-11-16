@@ -79,40 +79,88 @@ class ListenActivity : Activity() {
             LinearLayout.LayoutParams(MATCH_PARENT, 0, 1f))
         setContentView(root)
 
-        status.text = "Preparando…"
+        nightLine = TextView(this).apply {
+            setTextColor(orange); textSize = 22f; typeface = Typeface.DEFAULT_BOLD
+            setPadding(0, dp(8), 0, 0)
+        }
+        root.addView(nightLine, 2)
+        row.addView(button("Escuchar MCU") { startMcu() })
+
+        status.text = "Mira la línea naranja mientras enciendes y apagas las luces. Pulsa MARCA en cada cambio."
         try { listenBroadcasts() } catch (e: Throwable) { add("Broadcasts: ${e.message}") }
-        add("Modo noche de Android: ${nightText(resources.configuration)}")
-        // Se abre la escucha después de mostrar la pantalla, en segundo plano y grupo a grupo.
-        main.postDelayed({
-            // Hilo con Looper por si TWUtil crea Handlers por dentro.
-            val ht = android.os.HandlerThread("escucha").apply { start() }
-            Handler(ht.looper).post { startListening() }
-        }, 500)
+        val prev = prefs().getInt("trying", -1)
+        if (prev >= 0) {
+            val bad = prefs().getStringSet("bad", emptySet())!!.toMutableSet().apply { add(prev.toString()) }
+            prefs().edit().putStringSet("bad", bad).remove("trying").commit()
+            add("La última vez se cerró al abrir ${hex(prev)}: se saltará ese bloque")
+        }
+        pollNight()
+    }
+
+    // ---------- Modo noche de Android ----------
+
+    private lateinit var nightLine: TextView
+    private var lastNight: String? = null
+
+    private fun nightState(): String {
+        val cfg = nightText(resources.configuration)
+        val um = getSystemService(Context.UI_MODE_SERVICE) as? android.app.UiModeManager
+        val mode = when (um?.nightMode) {
+            android.app.UiModeManager.MODE_NIGHT_YES -> "noche"
+            android.app.UiModeManager.MODE_NIGHT_NO -> "día"
+            android.app.UiModeManager.MODE_NIGHT_AUTO -> "auto"
+            else -> "${um?.nightMode}"
+        }
+        val type = um?.currentModeType
+        val sec = runCatching { android.provider.Settings.Secure.getString(contentResolver, "ui_night_mode") }.getOrNull()
+        return "Noche: $cfg · ajuste: $mode · tipo: $type · secure: $sec"
+    }
+
+    private fun pollNight() {
+        try {
+            val st = nightState()
+            nightLine.text = st
+            if (st != lastNight) { add("CAMBIO → $st"); lastNight = st }
+        } catch (e: Throwable) { nightLine.text = "Error: ${e.message}" }
+        main.postDelayed({ if (!isFinishing) pollNight() }, 1000)
     }
 
     // ---------- MCU ----------
 
-    // Primero los grupos más probables; cada uno con 256 códigos.
-    private fun ranges(): List<IntRange> = listOf(
-        0x0100..0x01FF, 0x0200..0x02FF, 0x0300..0x03FF, 0x9E00..0x9EFF,
-        0xA100..0xA1FF, 0x0000..0x00FF, 0x0500..0x05FF, 0x0600..0x06FF,
-        0x0700..0x07FF, 0x0400..0x04FF, 0xA000..0xA0FF,
-    )
+    private fun prefs() = getSharedPreferences("escucha", Context.MODE_PRIVATE)
+    private var mcuStarted = false
+
+    private fun startMcu() {
+        if (mcuStarted) return
+        mcuStarted = true
+        val ht = android.os.HandlerThread("escucha").apply { start() }
+        Handler(ht.looper).post { startListening() }
+    }
+
+    // Bloques pequeños de 16 códigos; primero los más probables.
+    private fun chunks(): List<IntRange> {
+        val groups = listOf(0x0100, 0x0200, 0x0300, 0x9E00, 0xA100, 0x0000, 0x0500, 0x0600, 0x0700, 0x0400, 0xA000)
+        return groups.flatMap { g -> (0 until 16).map { i -> (g + i * 16)..(g + i * 16 + 15) } }
+    }
 
     private fun ui(f: () -> Unit) = main.post { try { f() } catch (_: Throwable) {} }
 
     private fun startListening() {
         val cls = try { Class.forName("android.tw.john.TWUtil") } catch (e: Throwable) {
-            ui { add("No hay TWUtil en este equipo: ${e.message}"); status.text = "Este equipo no tiene TWUtil" }; return
+            ui { add("No hay TWUtil en este equipo: ${e.message}") }; return
         }
-        for (r in ranges()) {
-            ui { status.text = "Abriendo ${hex(r.first)}… (${instances.size} abiertos)" }
+        val bad = prefs().getStringSet("bad", emptySet())!!
+        var opened = 0
+        for (r in chunks()) {
+            if (r.first.toString() in bad) { ui { add("Salto ${hex(r.first)} (cerró la app)") }; continue }
+            val n = opened
+            ui { status.text = "Abriendo ${hex(r.first)}… ($n bloques abiertos)" }
+            prefs().edit().putInt("trying", r.first).commit()
             try {
-                val tw = try { cls.getConstructor(Int::class.javaPrimitiveType).newInstance(1) }
-                         catch (e: Throwable) { cls.getConstructor().newInstance() }
+                val tw = cls.getConstructor(Int::class.javaPrimitiveType).newInstance(1)
                 val ids = ShortArray(r.count()) { (r.first + it).toShort() }
                 val res = cls.getMethod("open", ShortArray::class.java).invoke(tw, ids) as? Int ?: 0
-                if (res != 0) { ui { add("open ${hex(r.first)}-${hex(r.last)} → $res") }; continue }
+                if (res != 0) { ui { add("open ${hex(r.first)} → $res") }; continue }
                 cls.getMethod("start").invoke(tw)
                 val h = Handler(Looper.getMainLooper()) { m ->
                     try { onMcu(m.what, m.arg1, m.arg2, m.obj) } catch (_: Throwable) {}
@@ -121,14 +169,17 @@ class ListenActivity : Activity() {
                 cls.getMethod("addHandler", String::class.java, Handler::class.java)
                     .invoke(tw, "EscuchaLuces${r.first}", h)
                 synchronized(instances) { instances += tw to cls }
-                ui { add("Escuchando ${hex(r.first)}-${hex(r.last)}") }
+                opened++
             } catch (e: Throwable) {
                 ui { add("Error ${hex(r.first)}: ${e.javaClass.simpleName} ${e.message}") }
+            } finally {
+                prefs().edit().remove("trying").commit()
             }
         }
+        val total = opened
         ui {
-            status.text = "Escuchando ${instances.size} grupos. Pulsa MARCA, enciende las luces, espera 5 s, " +
-                "pulsa MARCA, apágalas, espera 5 s y pulsa MARCA. Repite y pulsa Guardar."
+            add("MCU: $total bloques abiertos")
+            status.text = "Escuchando la unidad ($total bloques). Enciende y apaga las luces pulsando MARCA en cada cambio; luego Guardar."
         }
     }
 
