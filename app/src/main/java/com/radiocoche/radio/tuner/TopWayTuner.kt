@@ -42,6 +42,7 @@ class TopWayTuner private constructor(
         private const val MSG_ACTIVITY = 0x9E00 // aviso de app de radio en primer plano
         private const val MSG_KEYS = 0x9E01     // teclas del volante / frontal
         private const val MSG_SOURCE = 0x9E11   // fuente de audio
+        private val BAND_TOKEN = Any()
 
         private val LISTEN = intArrayOf(
             0x109, 0x10A, 0x112, 0x201, 0x203, 0x301,
@@ -152,7 +153,13 @@ class TopWayTuner private constructor(
                 }
                 1 -> { // banda
                     mcuBand = msg.arg2
+                    reportedBand = msg.arg2
                     _status.update { it.copy(band = bandOf(mcuBand)) }
+                    // Banda confirmada: ya se puede enviar la frecuencia.
+                    val p = pendingTune
+                    if (p != null && bandOf(mcuBand) == p.first) {
+                        handler.post { flushPendingTune() }
+                    }
                 }
                 2 -> { // frecuencia (a veces con el nombre PS)
                     val band = bandOf(mcuBand)
@@ -191,12 +198,38 @@ class TopWayTuner private constructor(
         }
     }
 
+    /** Frecuencia pendiente de enviar cuando el microcontrolador confirme el cambio de banda. */
+    private var pendingTune: Pair<Band, Int>? = null
+    private var reportedBand = -1
+
     override fun tune(band: Band, freq: Int) {
         val target = if (band == Band.AM) 2 else 0
-        if (bandOf(mcuBand) != band) {
+        // Si aún no sabemos en qué banda está el microcontrolador, se le indica igualmente.
+        if (reportedBand < 0 || bandOf(mcuBand) != band) {
+            // Como la app de fábrica: primero solo el cambio de banda. Si se envía la frecuencia
+            // a la vez, el microcontrolador la recibe aún en la banda anterior y se queda en AM.
+            pendingTune = band to freq
             w(MSG_RADIO, 5, target)
             mcuBand = target
+            handler.removeCallbacksAndMessages(BAND_TOKEN)
+            handler.postAtTime({ flushPendingTune() }, BAND_TOKEN, android.os.SystemClock.uptimeMillis() + 700)
+            handler.postAtTime({
+                // Si no ha cambiado de banda, se repite la orden una vez.
+                if (reportedBand >= 0 && bandOf(reportedBand) != band) {
+                    pendingTune = band to freq
+                    w(MSG_RADIO, 5, target)
+                    handler.postAtTime({ flushPendingTune() }, BAND_TOKEN, android.os.SystemClock.uptimeMillis() + 700)
+                }
+            }, BAND_TOKEN, android.os.SystemClock.uptimeMillis() + 2000)
+            return
         }
+        pendingTune = null
+        w(MSG_PRESET, 255, toMcu(band, freq))
+    }
+
+    private fun flushPendingTune() {
+        val (band, freq) = pendingTune ?: return
+        pendingTune = null
         w(MSG_PRESET, 255, toMcu(band, freq))
     }
 
