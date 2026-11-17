@@ -47,7 +47,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        DayNight.load(this)
+        DayNight.load()
         DayNight.apply()
         LauncherBridge.handler = { cmd, index -> runOnUiThread { onLauncherCommand(cmd, index) } }
         lifecycleScope.launch {
