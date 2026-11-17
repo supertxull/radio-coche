@@ -32,22 +32,6 @@ class MainActivity : ComponentActivity() {
     private val vm: RadioViewModel by viewModels()
     private val mainHandler = Handler(Looper.getMainLooper())
 
-    /** Al encender o apagar las luces, la unidad avisa y cambiamos los colores. */
-    private val dayNightReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            DayNight.apply()
-            mainHandler.postDelayed({ DayNight.apply() }, 500)
-        }
-    }
-
-
-    /** Mira el modo día/noche cada pocos segundos mientras la app está a la vista. */
-    private val dayNightPoll = object : Runnable {
-        override fun run() {
-            DayNight.apply()
-            mainHandler.postDelayed(this, DayNight.POLL_MS)
-        }
-    }
 
     private var inFront = false
 
@@ -69,9 +53,6 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             vm.ui.collect { LauncherBridge.send(this@MainActivity, it, inFront) }
         }
-        ContextCompat.registerReceiver(
-            this, dayNightReceiver, IntentFilter(DayNight.ACTION), ContextCompat.RECEIVER_EXPORTED,
-        )
         setContent {
             MaterialTheme(colorScheme = darkColorScheme()) {
                 val s by vm.ui.collectAsState()
@@ -91,22 +72,19 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        mainHandler.removeCallbacks(dayNightPoll)
-        dayNightPoll.run()
+        DayNight.apply()
         vm.onForeground(true)
         inFront = true
         LauncherBridge.send(this, vm.ui.value, front = true, force = true)
     }
 
     override fun onDestroy() {
-        runCatching { unregisterReceiver(dayNightReceiver) }
         LauncherBridge.handler = null
         mainHandler.removeCallbacksAndMessages(null)
         super.onDestroy()
     }
 
     override fun onPause() {
-        mainHandler.removeCallbacks(dayNightPoll)
         inFront = false
         vm.onForeground(false)
         super.onPause()

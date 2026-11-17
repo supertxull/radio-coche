@@ -96,26 +96,12 @@ class TopWayTuner private constructor(
 
     private val handler = Handler(Looper.getMainLooper()) { msg -> onMessage(msg); true }
 
-    // Registro de diagnóstico: últimos mensajes con el microcontrolador.
-    private val logLines = ArrayDeque<String>()
-    private val timeFmt = java.text.SimpleDateFormat("HH:mm:ss.SSS", java.util.Locale.US)
-
-    private fun log(line: String) = synchronized(logLines) {
-        logLines.addFirst(timeFmt.format(java.util.Date()) + "  " + line)
-        while (logLines.size > 300) logLines.removeLast()
-    }
-
-    override fun debugLog(): List<String> = synchronized(logLines) { logLines.toList() }
-
-    private fun hex(v: Int) = "0x" + Integer.toHexString(v and 0xFFFF).uppercase()
 
     private fun w(what: Int, arg: Int) {
-        log("→ ${hex(what)} $arg")
         runCatching { write2.invoke(tw, what, arg) }.onFailure { Log.w(TAG, "write($what,$arg)", it) }
     }
 
     private fun w(what: Int, a1: Int, a2: Int) {
-        log("→ ${hex(what)} $a1 $a2")
         runCatching { write3.invoke(tw, what, a1, a2) }.onFailure { Log.w(TAG, "write($what,$a1,$a2)", it) }
     }
 
@@ -143,8 +129,6 @@ class TopWayTuner private constructor(
     }
 
     private fun onMessage(msg: Message) {
-        val o = msg.obj
-        log("← ${hex(msg.what)} a1=${msg.arg1} a2=${msg.arg2}" + if (o != null) " obj=" + (text(o) ?: o.javaClass.simpleName) else "")
         when (msg.what) {
             MSG_RADIO -> when (msg.arg1) {
                 0 -> { // indicadores: bit 2 = estéreo, bit 4 = mono forzado, bit 8 = LOC

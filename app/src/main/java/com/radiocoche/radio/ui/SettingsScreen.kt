@@ -49,7 +49,6 @@ import com.radiocoche.radio.model.Region
 @Composable
 fun SettingsScreen(s: UiState, vm: RadioViewModel) {
     val st = s.settings
-    var showDiag by remember { mutableStateOf(false) }
 
     // Exportar / importar las presintonías a un archivo de texto (emisoras.txt).
     val context = LocalContext.current
@@ -80,9 +79,6 @@ fun SettingsScreen(s: UiState, vm: RadioViewModel) {
                     GlyphIcon(Glyph.BACK, 28.dp, C.Text)
                 }
                 Text("Configuración", color = C.Text, fontSize = 30.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                RButton(Modifier.height(52.dp), radius = 14.dp, bg = C.Panel, onClick = { showDiag = true }) {
-                    Text("Diagnóstico", color = C.Muted, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 18.dp))
-                }
             }
 
             Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -170,7 +166,6 @@ fun SettingsScreen(s: UiState, vm: RadioViewModel) {
 
         ToastHost(s.toast, s.toastId, bottom = 32.dp, onTimeout = vm::clearToast)
 
-        if (showDiag) DiagnosticPanel(vm) { showDiag = false }
 
         val imp = pendingImport
         if (imp != null) {
@@ -262,91 +257,6 @@ private fun SwitchRow(label: String, desc: String, checked: Boolean, onChange: (
             contentAlignment = if (checked) Alignment.CenterEnd else Alignment.CenterStart,
         ) {
             Box(Modifier.size(28.dp).clip(CircleShape).background(if (checked) C.OnAccent else C.Dim))
-        }
-    }
-}
-
-/** Lista en directo de los mensajes con el sintonizador, para enviar capturas al depurar. */
-@Composable
-private fun DiagnosticPanel(vm: RadioViewModel, onClose: () -> Unit) {
-    val ctx = LocalContext.current
-    val scope = rememberCoroutineScope()
-    var snapA by remember { mutableStateOf<Map<String, String>?>(null) }
-    var diffs by remember { mutableStateOf<List<String>?>(null) }
-    var busy by remember { mutableStateOf(false) }
-    var lines by remember { mutableStateOf(vm.debugLog()) }
-    var lights by remember { mutableStateOf(DayNight.describe()) }
-    LaunchedEffect(Unit) {
-        while (true) {
-            lines = vm.debugLog()
-            lights = DayNight.describe()
-            delay(500)
-        }
-    }
-    Scrim(onDismiss = onClose) {
-        Column(
-            Modifier
-                .fillMaxSize()
-                .padding(24.dp)
-                .panel(radius = 20.dp, bg = C.Bg, border = C.Border2)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Diagnóstico del sintonizador", color = C.Text, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                RButton(Modifier.height(48.dp), radius = 12.dp, bg = C.Raised, onClick = onClose) {
-                    Text("Cerrar", color = C.Text, fontSize = 18.sp, modifier = Modifier.padding(horizontal = 18.dp))
-                }
-            }
-            Text(
-                "Colores: " + (if (DayNight.isNight()) "NOCHE" else "DÍA") + "  ·  " + lights,
-                color = C.Accent, fontSize = 15.sp, fontFamily = FontFamily.Monospace, maxLines = 2,
-            )
-            // Búsqueda de la señal de las luces: foto con luces apagadas, foto con luces encendidas.
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                RButton(Modifier.height(48.dp), radius = 12.dp, bg = C.Raised, onClick = {
-                    if (!busy) scope.launch {
-                        busy = true
-                        snapA = SystemSnapshot.take(ctx)
-                        diffs = null
-                        busy = false
-                    }
-                }) {
-                    Text("1 · Luces apagadas: foto", color = C.Text, fontSize = 17.sp, modifier = Modifier.padding(horizontal = 14.dp))
-                }
-                RButton(Modifier.height(48.dp), radius = 12.dp, bg = if (snapA != null) C.Raised else C.Panel, onClick = {
-                    val a = snapA
-                    if (a != null && !busy) scope.launch {
-                        busy = true
-                        diffs = SystemSnapshot.diff(a, SystemSnapshot.take(ctx))
-                        busy = false
-                    }
-                }) {
-                    Text("2 · Luces encendidas: comparar", color = if (snapA != null) C.Text else C.Dim, fontSize = 17.sp, modifier = Modifier.padding(horizontal = 14.dp))
-                }
-                Text(
-                    when {
-                        busy -> "Leyendo…"
-                        diffs != null -> "${diffs!!.size} cambios"
-                        snapA != null -> "Foto guardada (${snapA!!.size} valores)"
-                        else -> ""
-                    },
-                    color = C.Muted, fontSize = 16.sp,
-                )
-            }
-            if (lines.isEmpty() && diffs == null) {
-                Text("Sin mensajes (sintonizador simulado o sin actividad).", color = C.Muted, fontSize = 18.sp)
-            }
-            LazyColumn(Modifier.fillMaxWidth().weight(1f)) {
-                diffs?.let { d ->
-                    items(if (d.isEmpty()) listOf("Sin cambios entre las dos fotos") else d) { line ->
-                        Text(line, color = C.Accent, fontSize = 15.sp, fontFamily = FontFamily.Monospace)
-                    }
-                }
-                items(lines) { line ->
-                    Text(line, color = C.Muted, fontSize = 15.sp, fontFamily = FontFamily.Monospace, maxLines = 1)
-                }
-            }
         }
     }
 }

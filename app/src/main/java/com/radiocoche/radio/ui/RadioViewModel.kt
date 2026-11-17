@@ -141,7 +141,6 @@ class RadioViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun debugLog(): List<String> = tuner.debugLog()
 
     // ---------- Exportar / importar (emisoras.txt) ----------
 

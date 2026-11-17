@@ -15,4 +15,3 @@ dependencyResolutionManagement {
 
 rootProject.name = "RadioCoche"
 include(":app")
-include(":diagnostico")
