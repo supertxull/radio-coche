@@ -38,6 +38,7 @@ class MainActivity : ComponentActivity() {
     /** Órdenes del launcher (llegan a LauncherCommandReceiver): reenviar el estado o cambiar de presintonía. */
     private fun onLauncherCommand(cmd: String, index: Int) {
         when (cmd) {
+            "mute", "unmute" -> RadioAudio.fromLauncher(this, cmd == "mute")
             "prev" -> vm.stepPreset(-1)
             "next" -> vm.stepPreset(1)
             "preset" -> index.takeIf { it >= 0 }?.let { vm.selectPreset(it) }
@@ -50,6 +51,7 @@ class MainActivity : ComponentActivity() {
         DayNight.load()
         DayNight.apply()
         LauncherBridge.handler = { cmd, index -> runOnUiThread { onLauncherCommand(cmd, index) } }
+        RadioAudio.live = { on -> runOnUiThread { vm.setRadioAudio(on) } }
         lifecycleScope.launch {
             vm.ui.collect { LauncherBridge.send(this@MainActivity, it, inFront) }
         }
@@ -74,12 +76,14 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         DayNight.apply()
         vm.onForeground(true)
+        RadioAudio.take(this)
         inFront = true
         LauncherBridge.send(this, vm.ui.value, front = true, force = true)
     }
 
     override fun onDestroy() {
         LauncherBridge.handler = null
+        RadioAudio.live = null
         mainHandler.removeCallbacksAndMessages(null)
         super.onDestroy()
     }

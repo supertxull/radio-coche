@@ -23,6 +23,12 @@ class LauncherCommandReceiver : BroadcastReceiver() {
         val cmd = intent.getStringExtra("cmd") ?: "query"
         val index = intent.getIntExtra("index", -1)
 
+        // Silencio durante los avisos de radar del launcher.
+        if (cmd == "mute" || cmd == "unmute") {
+            runCatching { RadioAudio.fromLauncher(context.applicationContext, cmd == "mute") }
+            return
+        }
+
         // La pantalla de la Radio existe: que lo haga ella (así también se actualiza).
         LauncherBridge.handler?.let { it(cmd, index); return }
 

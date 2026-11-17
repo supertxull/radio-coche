@@ -298,6 +298,8 @@ class TopWayTuner private constructor(
         }
     }
 
+    override fun setRadioAudio(on: Boolean) = w(MSG_SOURCE, 192, if (on) 1 else 0)
+
     override fun setHardKeyListener(listener: ((HardKey) -> Unit)?) {
         hardKeys = listener
     }

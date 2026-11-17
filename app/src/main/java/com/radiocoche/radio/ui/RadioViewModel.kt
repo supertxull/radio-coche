@@ -207,6 +207,9 @@ class RadioViewModel(app: Application) : AndroidViewModel(app) {
     /** La app vuelve a primer plano (o se va): recupera el sonido de la radio. */
     fun onForeground(on: Boolean) = tuner.setForeground(on)
 
+    /** Sonido de la radio (lo quita un momento el aviso de radares del launcher). */
+    fun setRadioAudio(on: Boolean) = tuner.setRadioAudio(on)
+
     private fun onStatus(status: TunerStatus) {
         val info = status.info
         val current = _ui.value

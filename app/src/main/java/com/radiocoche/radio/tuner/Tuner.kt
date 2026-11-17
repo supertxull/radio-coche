@@ -51,6 +51,9 @@ interface Tuner {
 
     fun setHardKeyListener(listener: ((HardKey) -> Unit)?) = Unit
 
+    /** Da (true) o quita (false) el sonido de la radio. Lo usa el aviso de radares del launcher. */
+    fun setRadioAudio(on: Boolean) = Unit
+
 
     fun release()
 }
