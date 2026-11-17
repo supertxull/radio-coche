@@ -76,7 +76,6 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         DayNight.apply()
         vm.onForeground(true)
-        RadioAudio.take(this)
         inFront = true
         LauncherBridge.send(this, vm.ui.value, front = true, force = true)
     }
