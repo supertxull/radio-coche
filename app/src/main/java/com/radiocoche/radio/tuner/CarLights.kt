@@ -1,5 +1,7 @@
 package com.radiocoche.radio.tuner
 
+import android.content.Context
+import android.content.Intent
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -15,9 +17,17 @@ object CarLights {
 
     private var listener: ((Boolean) -> Unit)? = null
 
+    /** Para reenviar el aviso al launcher y a Música (por si su propia conexión no les llega). */
+    var app: Context? = null
+
     fun set(value: Boolean) {
         on = value
         listener?.invoke(value)
+        app?.let { ctx ->
+            for (p in listOf("com.radiocoche.launcher", "com.radiocoche.musica")) {
+                runCatching { ctx.sendBroadcast(Intent("com.radiocoche.LIGHTS").setPackage(p).putExtra("on", value)) }
+            }
+        }
     }
 
     fun setListener(l: ((Boolean) -> Unit)?) { listener = l }

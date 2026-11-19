@@ -48,6 +48,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        com.radiocoche.radio.tuner.CarLights.app = applicationContext
         DayNight.load()
         DayNight.apply()
         LauncherBridge.handler = { cmd, index -> runOnUiThread { onLauncherCommand(cmd, index) } }
