@@ -24,7 +24,7 @@ object CarLights {
         on = value
         listener?.invoke(value)
         app?.let { ctx ->
-            for (p in listOf("com.radiocoche.launcher", "com.radiocoche.musica")) {
+            for (p in listOf("com.radiocoche.launcher", "com.radiocoche.musica", "com.radiocoche.telefono")) {
                 runCatching { ctx.sendBroadcast(Intent("com.radiocoche.LIGHTS").setPackage(p).putExtra("on", value)) }
             }
         }
