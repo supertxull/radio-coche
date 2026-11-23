@@ -32,10 +32,14 @@ class LauncherCommandReceiver : BroadcastReceiver() {
         // La pantalla de la Radio existe: que lo haga ella (así también se actualiza).
         LauncherBridge.handler?.let { it(cmd, index); return }
 
-        runCatching { handleClosed(context.applicationContext, cmd, index) }
+        // Con la Radio cerrada hay que mantener viva la conexión unos segundos: el cambio de banda
+        // y la frecuencia se mandan por separado (la frecuencia, 0,7 s después).
+        val pending = goAsync()
+        val ok = runCatching { handleClosed(context.applicationContext, cmd, index) { pending.finish() } }.isSuccess
+        if (!ok) pending.finish()
     }
 
-    private fun handleClosed(ctx: Context, cmd: String, index: Int) {
+    private fun handleClosed(ctx: Context, cmd: String, index: Int, done: () -> Unit) {
         val storage = Storage(ctx)
         val bank = storage.bank
         val presets = Bank.entries.associateWith { storage.presets(it) }
@@ -55,15 +59,18 @@ class LauncherCommandReceiver : BroadcastReceiver() {
             else -> null
         }
 
+        var keepOpen = false
         if (target != null) {
-            val freq = state.list[target] ?: return
+            val freq = state.list[target] ?: run { done(); return }
             val tuner = TopWayTuner.create()
             if (tuner != null) {
-                try {
-                    tuner.tune(bank.band, freq)
-                } finally {
-                    tuner.release()
-                }
+                tuner.tune(bank.band, freq)
+                // La conexión se cierra cuando ya ha dado tiempo a mandar la frecuencia.
+                keepOpen = true
+                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                    runCatching { tuner.release() }
+                    done()
+                }, 3000)
             }
             if (bank.band == Band.FM) storage.fm = freq else storage.am = freq
             state = state.copy(
@@ -74,6 +81,7 @@ class LauncherCommandReceiver : BroadcastReceiver() {
         }
 
         LauncherBridge.send(ctx, state, front = false, force = true)
+        if (!keepOpen) done()
     }
 
     /** Presintonía siguiente o anterior entre las que tienen emisora. */
