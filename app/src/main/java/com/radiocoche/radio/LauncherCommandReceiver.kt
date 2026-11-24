@@ -35,8 +35,11 @@ class LauncherCommandReceiver : BroadcastReceiver() {
         // Con la Radio cerrada hay que mantener viva la conexión unos segundos: el cambio de banda
         // y la frecuencia se mandan por separado (la frecuencia, 0,7 s después).
         val pending = goAsync()
-        val ok = runCatching { handleClosed(context.applicationContext, cmd, index) { pending.finish() } }.isSuccess
-        if (!ok) pending.finish()
+        // finish() solo una vez, aunque falle algo después de dejar programado el cierre.
+        val finished = java.util.concurrent.atomic.AtomicBoolean(false)
+        val done = { if (finished.compareAndSet(false, true)) pending.finish() }
+        val ok = runCatching { handleClosed(context.applicationContext, cmd, index, done) }.isSuccess
+        if (!ok) done()
     }
 
     private fun handleClosed(ctx: Context, cmd: String, index: Int, done: () -> Unit) {
@@ -64,7 +67,12 @@ class LauncherCommandReceiver : BroadcastReceiver() {
             val freq = state.list[target] ?: run { done(); return }
             val tuner = TopWayTuner.create()
             if (tuner != null) {
-                tuner.tune(bank.band, freq)
+                try {
+                    tuner.tune(bank.band, freq)
+                } catch (e: Throwable) {
+                    tuner.release()
+                    throw e
+                }
                 // La conexión se cierra cuando ya ha dado tiempo a mandar la frecuencia.
                 keepOpen = true
                 android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
